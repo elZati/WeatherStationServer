@@ -24,7 +24,7 @@ TMRh20 2014 - Updated to work with optimized RF24 Arduino library
 #include <sstream>
 #include <string>
 #include <unistd.h>
-#include <RF24/RF24.h>
+#include "RF24.h"
 
 using namespace std;
 //
@@ -75,7 +75,7 @@ RF24 radio(22,0);
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
-bool radioNumber = 1;
+bool radioNumber = 0;
 
 /********************************/
 

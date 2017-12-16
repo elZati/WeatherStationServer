@@ -1,2 +1,2 @@
-arm-linux-gnueabihf-g++ -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -Ofast -Wall -pthread  -I/usr/local/include/RF24/.. -I.. -L/usr/local/lib gettingstarted.cpp -lrf24 -o gettingstarted
+arm-linux-gnueabihf-g++ -march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -Ofast -Wall -pthread  -I/usr/local/include/RF24/ -L/usr/local/lib gettingstarted.cpp -lrf24 -o gettingstarted
 

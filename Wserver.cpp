@@ -15,6 +15,16 @@ using namespace std;
 
 RF24 radio(22,0);
 
+struct SensorPayload {
+	float sensor1;
+	float sensor2;
+	float sensor3;
+	float sensor4;
+};
+
+SensorPayload SensorNode1;
+
+
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -87,10 +97,10 @@ int main(int argc, char** argv){
 			{
 				// Grab the response, compare, and send to debugging spew
 				
-				radio.read( &sensor1, sizeof(float) );
+				radio.read( &SensorNode1, sizeof(SensorPayload) );
 
 				// Spew it
-				printf("Got response %lu\n",sensor1);
+				printf("Got response %5.2f\n",SensorNode1.sensor1);
 			}
 			sleep(1);
 		

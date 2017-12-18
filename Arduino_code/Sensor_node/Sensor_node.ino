@@ -81,10 +81,9 @@ if(radioReceived)
       if(receive_init == initialize_code)
      {
       radio.stopListening();                                        // First, stop listening so we can talk   
-      radio.write( &sensor_val, sizeof(float) );              // Send the final one back.      
+      radio.write( &packet, sizeof(SensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
-      Serial.print(F("Sent response "));
-      Serial.println(sensor_val); 
+      Serial.print(F("Sent response"));
      } else {
       Serial.println("Wrong init");
      }

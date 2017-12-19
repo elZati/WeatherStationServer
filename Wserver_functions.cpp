@@ -8,6 +8,7 @@
 #include <string>
 #include <unistd.h>
 #include "RF24.h"
+#include <ctime>
 
 
 using namespace std;
@@ -39,7 +40,14 @@ const uint8_t pipes[][6] = {"1Node","2Node"};
 
 int main(int argc, char** argv){
 
-  cout << "Weather Station Server for RPi";
+	cout << "Weather Station Server for RPi" << endl;
+	time_t now = time(0);
+	tm *ltm = localtime(&now);
+
+
+	cout << "Time: " << 1 + ltm->tm_hour << ":";
+	cout << 1 + ltm->tm_min << ":";
+	cout << 1 + ltm->tm_sec << endl;
 
   // Setup and configure rf radio
   radio.begin();

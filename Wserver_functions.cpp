@@ -26,7 +26,7 @@ struct SensorPayload {
 SensorPayload SensorNode1;
 
 // function declaration
-bool fetchSensor(uint8_t sensorAddress);
+bool fetchSensor(const uint8_t *sensorAddress);
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -46,9 +46,14 @@ int main(int argc, char** argv){
 	tm *ltm = localtime(&now);
 
 
-	cout << "Time: " << 1 + ltm->tm_hour << ":";
-	cout << 1 + ltm->tm_min << ":";
-	cout << 1 + ltm->tm_sec << endl;
+	cout << "Time: " << ltm->tm_hour << ":";
+	if(ltm->tm_min >= 10){
+	cout << ltm->tm_min << ":";
+}
+else{
+cout << "0" << ltm->tm_min << ":";
+}
+	cout << ltm->tm_sec << endl;
 
   // Setup and configure rf radio
   radio.begin();
@@ -80,7 +85,7 @@ int main(int argc, char** argv){
   return 0;
 }
 
-bool fetchSensor(uint8_t sensorAddress) {
+bool fetchSensor(const uint8_t *sensorAddress) {
 	
 		radio.openWritingPipe(sensorAddress);
 		//radio.openReadingPipe(1,pipes[0]);

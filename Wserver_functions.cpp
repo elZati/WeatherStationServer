@@ -67,7 +67,7 @@ int main(int argc, char** argv){
 	while (1)
 	{
 	
-			bool ok = fetchSensor(pipes[0])
+			bool ok = fetchSensor(pipes[0]);
 			sleep(1);
 		
 

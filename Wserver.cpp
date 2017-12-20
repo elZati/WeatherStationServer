@@ -24,7 +24,7 @@ struct SensorPayload {
 
 SensorPayload SensorNode1;
 
-
+time_t timev;
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -40,7 +40,8 @@ const uint8_t pipes[][6] = {"1Node","2Node"};
 int main(int argc, char** argv){
 
   cout << "Weather Station Server for RPi";
-
+  time(&timev);
+  cout << timev;
   // Setup and configure rf radio
   radio.begin();
 

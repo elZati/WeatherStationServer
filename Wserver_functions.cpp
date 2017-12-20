@@ -73,11 +73,8 @@ int main(int argc, char** argv){
 
 
 	} // forever loop
-
-  return 0;
-}
-
-bool fetchSensor(uint8_t sensorAddress) {
+	
+	bool fetchSensor(uint8_t sensorAddress) {
 	
 		radio.openWritingPipe(sensorAddress);
 		//radio.openReadingPipe(1,pipes[0]);
@@ -129,4 +126,9 @@ bool fetchSensor(uint8_t sensorAddress) {
 	  
 	
 }
+
+  return 0;
+}
+
+
 

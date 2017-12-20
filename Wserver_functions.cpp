@@ -25,7 +25,8 @@ struct SensorPayload {
 
 SensorPayload SensorNode1;
 
-
+// function declaration
+bool fetchSensor(uint8_t sensorAddress);
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -74,7 +75,12 @@ int main(int argc, char** argv){
 
 	} // forever loop
 	
-	bool fetchSensor(uint8_t sensorAddress) {
+
+
+  return 0;
+}
+
+bool fetchSensor(uint8_t sensorAddress) {
 	
 		radio.openWritingPipe(sensorAddress);
 		//radio.openReadingPipe(1,pipes[0]);
@@ -126,9 +132,4 @@ int main(int argc, char** argv){
 	  
 	
 }
-
-  return 0;
-}
-
-
 

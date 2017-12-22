@@ -184,7 +184,9 @@ void print_test() {
 			
 			// Grab the response, compare, and send to debugging spew
 				
-			radio.read( &SensorNode1, sizeof(SensorPayload) );
+			SensorNode1.sensor1 = 23.55;
+			SensorNode1.sensor2 = 55.55;
+			SensorNode1.sensor3 = 999.999;
 
 			// Spew it
 			printf("Temperature: %4.1f \370C\n",SensorNode1.sensor1);

@@ -74,7 +74,7 @@ cout << "0" << ltm->tm_min << ":";
 	{
 	
 			bool ok = fetchSensor(pipes[0]);
-			sleep(1);
+			sleep(5);
 		
 
 
@@ -97,7 +97,7 @@ bool fetchSensor(const uint8_t *sensorAddress) {
 
 		// Take the time, and send it.  This will block until complete
 
-		printf("Now sending...\n");
+		printf("Now sending...");
 
 
 		bool ok = radio.write( &initialize_cmd, sizeof(int) );
@@ -107,6 +107,7 @@ bool fetchSensor(const uint8_t *sensorAddress) {
 				return false;
 		}
 		// Now, continue listening
+		printf(" ..OK.\n");
 		radio.startListening();
 
 		// Wait here until we get a response, or timeout (250ms)
@@ -147,8 +148,8 @@ bool fetchSensor(const uint8_t *sensorAddress) {
 			radio.read( &SensorNode1, sizeof(SensorPayload) );
 
 			// Spew it
-			printf("Temperature: %4.1f \370C\n",SensorNode1.sensor1);
-			printf("Humidity: %4.1f %RH\n",SensorNode1.sensor2);
+			printf("Temperature: %4.1f \302\260C\n",SensorNode1.sensor1);
+			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
 			printf("\n");

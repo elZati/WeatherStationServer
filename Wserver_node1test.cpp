@@ -156,7 +156,7 @@ bool fetchSensor(const uint8_t *sensorAddress) {
 
 			// Spew it
 			printf("Temperature: %4.1f \370C\n",SensorNode1.sensor1);
-			printf("Humidity: %4.1f %RH\n",SensorNode1.sensor2);
+			printf("Humidity: %4.1f RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
 			printf("\n");
@@ -190,7 +190,7 @@ void print_test() {
 
 			// Spew it
 			printf("Temperature: %4.1f \370C\n",SensorNode1.sensor1);
-			printf("Humidity: %4.1f %RH\n",SensorNode1.sensor2);
+			printf("Humidity: %4.1f RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
 			printf("\n");

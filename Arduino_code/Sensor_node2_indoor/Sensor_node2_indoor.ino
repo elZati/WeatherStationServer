@@ -26,7 +26,7 @@ unsigned long timer = millis();
 bool radioNumber = 1;
 
 /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
-RF24 radio(9,10);
+RF24 radio(7,8);
 /**********************************************************/
 
 byte addresses[][6] = {"1Node","2Node","3node"};
@@ -54,7 +54,7 @@ void setup() {
   //Configure the humidity sensor
   myHumidity.begin();
   
-  //pinMode(2, INPUT);
+  pinMode(2, INPUT);
   radio.begin();
   printf_begin();
   // Set the PA Level low to prevent power supply related issues since this is a
@@ -118,7 +118,7 @@ bool sendSensordata(){
       radio.stopListening();                                        // First, stop listening so we can talk   
       radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
-      Serial.print(F("Sent response"));
+      Serial.println(F("Sent response"));
       return true;
      } else {
       Serial.println("Wrong init");

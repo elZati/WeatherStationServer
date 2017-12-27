@@ -62,12 +62,12 @@ cout << "0" << ltm->tm_min << ":";
   // optionally, increase the delay between retries & # of retries
   radio.setRetries(15,15);
   // Dump the configuration of the rf unit for debugging
-  radio.printDetails();
+  //radio.printDetails();
 
  
 	radio.openWritingPipe(pipes[0]);
 	radio.openReadingPipe(1,pipes[1]);
-
+        radio.printDetails();
 	radio.startListening();
 	
 	// forever loop
@@ -76,7 +76,7 @@ cout << "0" << ltm->tm_min << ":";
 	
 			bool ok = fetchSensor(pipes[0]);
 			sleep(5);
-			bool ok = fetchSensor(pipes[2]);
+			bool ok2 = fetchSensor(pipes[2]);
 			sleep(5);
 
 
@@ -116,7 +116,7 @@ bool fetchSensor(const uint8_t *sensorAddress) {
 		unsigned long started_waiting_at = millis();
 		bool timeout = false;
 		while ( ! radio.available() && ! timeout ) {
-				if (millis() - started_waiting_at > 200 )
+				if (millis() - started_waiting_at > 1000 )
 					timeout = true;
 		}
 

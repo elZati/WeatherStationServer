@@ -32,7 +32,7 @@ SensorPayload SensorNode5;
 // function declaration
 bool fetchSensor(const uint8_t *sensorAddress);
 void printNodes();
-void fetchNodes(int nodeNumber);
+void fetchNode(int nodeNumber);
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -173,14 +173,15 @@ bool fetchNode(int nodeNumber) {
 		// Take the time, and send it.  This will block until complete
 
 		printf("Now sending...");
-
-
+		bool all_ok = false;
+		int retry_counter = 0;
+		
+		while(!all_ok && retry_counter <= NODE_RETRY){
 		bool ok = radio.write( &initialize_cmd, sizeof(int) );
 
 		if (!ok){
 				printf("failed.\n");
-				return false;
-		}
+		} else{
 		// Now, continue listening
 		printf(" ..OK.\n");
 		radio.startListening();
@@ -189,20 +190,26 @@ bool fetchNode(int nodeNumber) {
 		unsigned long started_waiting_at = millis();
 		bool timeout = false;
 		while ( ! radio.available() && ! timeout ) {
-				if (millis() - started_waiting_at > 1000 )
+				if (millis() - started_waiting_at > NODE_TIMEOUT )
 					timeout = true;
 		}
 		// Describe the results
 		if ( timeout )
 		{
 			printf("Failed, response timed out.\n");
-			return false;
+
+		} else{
+			all_ok = true;
 		}
-		else
+		}
+}
+		if(all_ok)
 		{
 			// Grab the response, compare, and send to debugging spew
 			radio.read( &nodes[nodeNumber], sizeof(SensorPayload) );
 			return true;
+		} else {
+			return false;
 		}
 	
 }

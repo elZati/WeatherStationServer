@@ -10,6 +10,12 @@
 #include "RF24.h"
 #include <ctime>
 
+#define NODE_RETRY 3 // Number of radio retries per node
+#define NODE_TIMEOUT 300 // Timeout value for radio messaging
+#define NODE1_REFRESH_DELAY 1000 //Delay between polling node 1
+#define NODE2_REFRESH_DELAY 5000 //Delay between polling node 2
+#define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
+
 
 using namespace std;
 
@@ -32,7 +38,7 @@ SensorPayload SensorNode5;
 // function declaration
 bool fetchSensor(const uint8_t *sensorAddress);
 void printNodes();
-void fetchNode(int nodeNumber);
+bool fetchNode(int nodeNumber);
 
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -42,25 +48,20 @@ int initialize_cmd = 12345;
 
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint8_t pipes[][6] = {"1Node","2Node","3node","4node","5node"};
-char *nodes[] = {"SensorNode1","SensorNode2"};
+string nodes[] = {"SensorNode1","SensorNode2"};
 
 //********* Sensor Config ***********
 int number_of_nodes = 2; //enter amount of active nodes 
 
-bool node1_enable = true:
+bool node1_enable = true;
 bool node2_enable = false;
 bool node3_enable = false;
 bool node4_enable = false;
 bool node5_enable = false;
 
-char *node1_name = "OUTDOOR SENSOR"; //enter name of node
-char *node2_name = "INDOOR SENSOR";
-
-#Define NODE_RETRY 3 // Number of radio retries per node
-#Define NODE_TIMEOUT 300 // Timeout value for radio messaging
-#Define NODE1_REFRESH_DELAY 1000 //Delay between polling node 1
-#Define NODE2_REFRESH_DELAY 5000 //Delay between polling node 2
-#Define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
+string  node1_name = "OUTDOOR SENSOR"; //enter name of node
+string node2_name = "INDOOR SENSOR";
+ 
 
 //***********************************
 
@@ -102,12 +103,12 @@ cout << "0" << ltm->tm_min << ":";
 	while (1)
 	{
 	
-			bool ok = fetchSensor(pipes[0]);
-			printNodes;
-			sleep(3);
+			//fetchSensor(pipes[0]);
+			//printNodes();
+			sleep(1);
 			fetchNode(0);
-			printNodes;
-			sleep(3);
+			printNodes();
+			//sleep(3);
 
 
 	} // forever loop
@@ -172,7 +173,7 @@ bool fetchNode(int nodeNumber) {
 
 		// Take the time, and send it.  This will block until complete
 
-		printf("Now sending...");
+		//printf("Now sending...");
 		bool all_ok = false;
 		int retry_counter = 0;
 		
@@ -180,12 +181,12 @@ bool fetchNode(int nodeNumber) {
 		bool ok = radio.write( &initialize_cmd, sizeof(int) );
 
 		if (!ok){
-				printf("failed.\n");
+				printf(" Write failed.\n");
 		} else{
 		// Now, continue listening
-		printf(" ..OK.\n");
+		//printf(" ..OK.\n");
 		radio.startListening();
-
+		}
 		// Wait here until we get a response, or timeout (250ms)
 		unsigned long started_waiting_at = millis();
 		bool timeout = false;
@@ -198,17 +199,31 @@ bool fetchNode(int nodeNumber) {
 		{
 			printf("Failed, response timed out.\n");
 
-		} else{
-			all_ok = true;
+		} if(!timeout){
+		all_ok = true;
+                //printf("All OK.\n");
+
 		}
-		}
-}
+	}
+
+
 		if(all_ok)
 		{
+
+                 //printf("Grabbin' response..\n");
+			if(nodeNumber == 0){
 			// Grab the response, compare, and send to debugging spew
-			radio.read( &nodes[nodeNumber], sizeof(SensorPayload) );
+			radio.read( &SensorNode1, sizeof(SensorPayload) );
+			}
+                        if(nodeNumber == 2){
+                        // Grab the response, compare, and send to debugging spew
+                        radio.read( &SensorNode2, sizeof(SensorPayload) );
+                        }
+
 			return true;
-		} else {
+		} 
+
+		else {
 			return false;
 		}
 	
@@ -222,7 +237,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 	
 	if(node1_enable) {
 
-			printf("***************** %s MESSAGE ************************ \n", node1_name);
+			cout << "***************** " <<  node1_name << " MESSAGE ************************" << endl;
 			
 			time_t now = time(0);
 			tm *ltm = localtime(&now);
@@ -247,7 +262,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 	
 	if(node2_enable) {
 
-			printf("***************** %s MESSAGE ************************ \n", node2_name);
+			cout << "***************** " << node2_name << "  MESSAGE ************************" << endl;
 			
 			time_t now = time(0);
 			tm *ltm = localtime(&now);

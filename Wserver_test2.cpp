@@ -115,11 +115,10 @@ cout << "0" << ltm->tm_min << ":";
 
 bool fetchSensor(int nodeAddress) {
 	
-		radio.openWritingPipe(pipes[nodeAddress]);
-	  
-		// First, stop listening so we can talk.
-		radio.stopListening();
+	radio.stopListening();
 
+	radio.openWritingPipe(pipes[nodeAddress]);
+	  
 		// Take the time, and send it.  This will block until complete
 
 		printf("Now sending...");
@@ -148,6 +147,7 @@ bool fetchSensor(int nodeAddress) {
 		if ( timeout )
 		{
 			printf("Failed, response timed out.\n");
+			radio.stopListening();
 			return false;
 		}
 		else
@@ -165,7 +165,7 @@ bool fetchSensor(int nodeAddress) {
 			{
 				SensorNode2 = buffer;
 			}
-
+			radio.stopListening();
 			return true;
 		}
 	

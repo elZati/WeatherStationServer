@@ -52,20 +52,21 @@ void setup() {
 
 
   //Configure the humidity sensor
-  myHumidity.begin();
+  //myHumidity.begin();
   
   pinMode(2, INPUT);
   radio.begin();
   printf_begin();
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_LOW);
+  radio.setPALevel(RF24_PA_MAX);
+  radio.setRetries(15,15);
   
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[1]);
-    radio.openReadingPipe(1,addresses[2]);
-  
+    radio.openReadingPipe(1,addresses[0]);
+  radio.setChannel(99);
   // Start the radio listening for data
   radio.startListening();
   delay(1000);
@@ -76,7 +77,7 @@ void setup() {
 void loop() {
   
 /****************** Sensor Node Role ***************************/
-sleepNow();
+//sleepNow();
 
 if(radio.available())
 {
@@ -131,9 +132,11 @@ bool sendSensordata(){
 
 void poll_sensors(){
 
-  packet.sensor2 = myHumidity.readHumidity();
-  packet.sensor1 = myHumidity.readTemperature();
+  //packet.sensor2 = myHumidity.readHumidity();
+  //packet.sensor1 = myHumidity.readTemperature();
 
+  //packet.sensor2 = myHumidity.readHumidity();
+  //packet.sensor1 = myHumidity.readTemperature();
 
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);

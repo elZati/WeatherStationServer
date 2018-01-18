@@ -116,8 +116,15 @@ cout << "0" << ltm->tm_min << ":";
 bool fetchSensor(int nodeAddress) {
 	
 	radio.stopListening();
+	
+	if(nodeAddress == 2)
+	{
+		radio.setChannel(99);
+	} else {
+		radio.setChannel(76);
+	}
 
-	radio.openWritingPipe(pipes[nodeAddress]);
+	//radio.openWritingPipe(pipes[nodeAddress]);
 	  
 		// Take the time, and send it.  This will block until complete
 

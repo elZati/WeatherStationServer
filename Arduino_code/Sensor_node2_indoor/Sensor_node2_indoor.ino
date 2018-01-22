@@ -29,7 +29,7 @@ bool radioNumber = 1;
 RF24 radio(7,8);
 /**********************************************************/
 
-byte addresses[][6] = {"1Node","2Node","3node"};
+byte addresses[][6] = {"1Node","2Node","3node","4node"};
 
 // Used to control whether this node is sending or receiving
 bool role = 0;
@@ -60,13 +60,17 @@ void setup() {
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_MAX);
+  radio.setAutoAck(1);
+  radio.enableDynamicPayloads();
+  radio.setDataRate(RF24_1MBPS);
   radio.setRetries(15,15);
+
   
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[1]);
-    radio.openReadingPipe(1,addresses[0]);
-  radio.setChannel(99);
+    radio.openReadingPipe(1,addresses[2]);
+
   // Start the radio listening for data
   radio.startListening();
   delay(1000);
@@ -79,11 +83,9 @@ void loop() {
 /****************** Sensor Node Role ***************************/
 //sleepNow();
 
-if(radio.available())
-{
- poll_sensors();
+ 
  bool ok = sendSensordata();
-}
+
 
 
 } // Loop
@@ -109,20 +111,25 @@ void sleepNow ()
 bool sendSensordata(){
 
       if( radio.available()){
-                                                                    // Variable for the received timestamp
-      while (radio.available()) {                                   // While there is data ready
+      Serial.println("Radio available.");                                                             // Variable for the received timestamp
+      //while (radio.available()) {                                   // While there is data ready
         radio.read( &receive_init, sizeof(int) );             // Get the payload
-      }
+      //}
 
       if(receive_init == initialize_code)
      {
       radio.stopListening();                                        // First, stop listening so we can talk   
+      poll_sensors();
       radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
       Serial.println(F("Sent response"));
+      radio.powerDown();
+      radio.powerUp();
       return true;
      } else {
       Serial.println("Wrong init");
+      radio.powerDown();
+      radio.powerUp();
       return false;
      }
    }

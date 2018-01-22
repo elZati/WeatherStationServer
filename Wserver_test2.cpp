@@ -29,7 +29,7 @@ struct SensorPayload {
 
 SensorPayload SensorNode1;
 SensorPayload SensorNode2;
-SensorPayload buffer;
+
 
 // function declaration
 bool fetchSensor(int nodeAddress);
@@ -37,7 +37,7 @@ void printNodes();
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
-int initialize_cmd = 12345;
+const int initialize_cmd = 12345;
 float sensor1 = 0;
 /********************************/
 
@@ -83,13 +83,15 @@ cout << "0" << ltm->tm_min << ":";
 
   // optionally, increase the delay between retries & # of retries
 	radio.setRetries(15,15);
+	radio.setPALevel(RF24_PA_MAX);
+	radio.setAutoAck(1);
+	radio.enableDynamicPayloads();
+	radio.setDataRate(RF24_1MBPS);
 
 
- 
-	radio.openWritingPipe(pipes[0]);
+
 	radio.openReadingPipe(1,pipes[1]);
     radio.printDetails();
-	radio.startListening();
 	
 	// forever loop
 	while (1)
@@ -115,16 +117,9 @@ cout << "0" << ltm->tm_min << ":";
 
 bool fetchSensor(int nodeAddress) {
 	
+	SensorPayload buffer;
+	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.stopListening();
-	
-	if(nodeAddress == 2)
-	{
-		radio.setChannel(99);
-	} else {
-		radio.setChannel(76);
-	}
-
-	//radio.openWritingPipe(pipes[nodeAddress]);
 	  
 		// Take the time, and send it.  This will block until complete
 

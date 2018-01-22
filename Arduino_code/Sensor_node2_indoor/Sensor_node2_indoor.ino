@@ -125,11 +125,13 @@ bool sendSensordata(){
       Serial.println(F("Sent response"));
       radio.powerDown();
       radio.powerUp();
+      //radio.begin();
       return true;
      } else {
       Serial.println("Wrong init");
       radio.powerDown();
       radio.powerUp();
+      //radio.begin();
       return false;
      }
    }

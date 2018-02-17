@@ -26,7 +26,7 @@ unsigned long timer = millis();
 bool radioNumber = 1;
 
 /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
-RF24 radio(7,8);
+RF24 radio(9,10);
 /**********************************************************/
 
 byte addresses[][6] = {"1Node","2Node","3node","4node"};
@@ -44,12 +44,12 @@ struct sensorPayload {
   float sensor3;
   float sensor4;
 };
-
-sensorPayload packet = {11.11, 22.22, 33.33, 44.44};
+sensorPayload packet;
 
 void setup() {
   Serial.begin(57600);
-
+  randomSeed(analogRead(0));
+  packet = {random(10, 20), 22.22, 33.33, 44.44};
 
   //Configure the humidity sensor
   //myHumidity.begin();
@@ -59,9 +59,9 @@ void setup() {
   printf_begin();
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_MAX);
-  radio.setAutoAck(1);
-  radio.enableDynamicPayloads();
+  radio.setPALevel(RF24_PA_HIGH);
+  //radio.setAutoAck(1);
+  //radio.enableDynamicPayloads();
   radio.setDataRate(RF24_1MBPS);
   radio.setRetries(15,15);
 
@@ -84,7 +84,11 @@ void loop() {
 //sleepNow();
 
  
+if(radio.available())
+{
+ poll_sensors();
  bool ok = sendSensordata();
+}
 
 
 
@@ -110,8 +114,8 @@ void sleepNow ()
 
 bool sendSensordata(){
 
-      if( radio.available()){
-      Serial.println("Radio available.");                                                             // Variable for the received timestamp
+      //if( radio.available()){
+                                                                    // Variable for the received timestamp
       //while (radio.available()) {                                   // While there is data ready
         radio.read( &receive_init, sizeof(int) );             // Get the payload
       //}
@@ -119,22 +123,15 @@ bool sendSensordata(){
       if(receive_init == initialize_code)
      {
       radio.stopListening();                                        // First, stop listening so we can talk   
-      poll_sensors();
       radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
-      Serial.println(F("Sent response"));
-      radio.powerDown();
-      radio.powerUp();
-      //radio.begin();
+      Serial.print(F("Sent response"));
       return true;
      } else {
       Serial.println("Wrong init");
-      radio.powerDown();
-      radio.powerUp();
-      //radio.begin();
       return false;
      }
-   }
+   //}
 
 
 }
@@ -146,7 +143,7 @@ void poll_sensors(){
 
   //packet.sensor2 = myHumidity.readHumidity();
   //packet.sensor1 = myHumidity.readTemperature();
-
+  packet = {random(10, 20), 22.22, 33.33, 44.44};
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);
   Serial.print("Humidity = ");

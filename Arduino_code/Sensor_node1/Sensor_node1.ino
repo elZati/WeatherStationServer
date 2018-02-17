@@ -88,7 +88,7 @@ sensorPayload packet = {11.11, 22.22, 33.33, 44.44};
 
 void setup() {
   Serial.begin(57600);
-
+  randomSeed(analogRead(0));
   //Configure the pressure sensor
   myPressure.begin(); // Get sensor online
   myPressure.setModeBarometer(); // Measure pressure in Pascals from 20 to 110 kPa
@@ -102,8 +102,8 @@ void setup() {
   printf_begin();
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_LOW);
-  
+  radio.setPALevel(RF24_PA_HIGH);
+   radio.setRetries(15,15);
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[1]);
@@ -150,11 +150,11 @@ void sleepNow ()
 
 bool sendSensordata(){
 
-      if( radio.available()){
+      //if( radio.available()){
                                                                     // Variable for the received timestamp
-      while (radio.available()) {                                   // While there is data ready
+      //while (radio.available()) {                                   // While there is data ready
         radio.read( &receive_init, sizeof(int) );             // Get the payload
-      }
+      //}
 
       if(receive_init == initialize_code)
      {
@@ -167,7 +167,7 @@ bool sendSensordata(){
       Serial.println("Wrong init");
       return false;
      }
-   }
+   //}
 
 
 }

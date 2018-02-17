@@ -25,7 +25,7 @@
 using namespace std;
 
 
-RF24 radio(7,8); //CE, CSN
+RF24 radio(9,10); //CE, CSN
 
 struct SensorPayload {
   float sensor1;
@@ -58,7 +58,8 @@ bool node5_enable = false;
 
 String  node1_name = "OUTDOOR SENSOR"; //enter name of node
 String node2_name = "INDOOR SENSOR";
- 
+
+
 
 //***********************************
 
@@ -75,7 +76,7 @@ void setup() {
 
   // optionally, increase the delay between retries & # of retries
   radio.setRetries(15,15);
-  radio.setPALevel(RF24_PA_MAX);
+  radio.setPALevel(RF24_PA_HIGH);
   //radio.setAutoAck(1);
   //radio.enableDynamicPayloads();
   radio.setDataRate(RF24_1MBPS);
@@ -91,17 +92,36 @@ void loop() {
   
   // forever loop
 
-  
-      bool ok = fetchSensor(0);
-      if(!ok) {
-        Serial.println("*** Node address 0 failed. ** \n");
-      }
-      bool ok2 = fetchSensor(2);
-      if(!ok2) {
-        Serial.println("*** Node address 2 failed. ** \n");
-      }
+      retryFetchSensor(0, 100, 50);
+      retryFetchSensor(2, 100, 50);
+
       delay(2000);
       printNodes();
+}
+
+void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
+
+  bool max_attempts = false;
+  int att_counter = 0;
+  bool ok = false;
+
+  while(!ok && !max_attempts){
+    delay(delayTime);
+    ok = fetchSensor(nodeAddress);
+    att_counter++;
+    if(att_counter > max_attemptCount){
+      max_attempts = true;
+      Serial.print("Max attempts exceeded for sensor ");
+      Serial.println(nodeAddress);
+    }
+  }
+
+//    Serial.print("It took ");  
+//    Serial.print(att_counter); 
+//    Serial.print(" attempts for sensor "); 
+//    Serial.println(nodeAddress);
+
+  
 }
 
 bool fetchSensor(int nodeAddress) {
@@ -114,18 +134,18 @@ bool fetchSensor(int nodeAddress) {
     
     // Take the time, and send it.  This will block until complete
 
-    Serial.println("Now sending...");
+    //Serial.println("Now sending...");
 
 
     bool ok = radio.write( &initialize_cmd, sizeof(int) );
 
     if (!ok){
-        Serial.println("Failed to write.\n");
+        //Serial.println("Failed to write.\n");
         //radio.begin();
         return false;
     }
     // Now, continue listening
-    Serial.println(" ..OK.");
+    //Serial.println(" ..OK.");
     radio.startListening();
 
     // Wait here until we get a response, or timeout (250ms)
@@ -140,7 +160,7 @@ bool fetchSensor(int nodeAddress) {
     // Describe the results
     if ( timeout )
     {
-      Serial.println("Failed, response timed out.");
+      //Serial.println("Failed, response timed out.");
       radio.stopListening();
       //radio.begin();
       return false;
@@ -177,7 +197,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
       Serial.println("OUTDOOR SENSOR1");
 
       // Spew it
-Serial.print("Temperature: ");
+Serial.print("Temperature 0: ");
 Serial.println(SensorNode1.sensor1);
 //      Serial.println("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 //      Serial.println("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
@@ -187,7 +207,8 @@ Serial.println(SensorNode1.sensor1);
   
   if(node2_enable) {
       Serial.println("INDOOR SENSOR1");
-
+Serial.print("Temperature 2: ");
+Serial.println(SensorNode2.sensor1);
 
       // Spew it
 //      Serial.println("Temperature: %4.1f \302\260C\n",SensorNode2.sensor1);
@@ -198,7 +219,7 @@ Serial.println(SensorNode1.sensor1);
   last_printout = millis();
 }
   
-
+Serial.println(" ");
   return;
 }
 

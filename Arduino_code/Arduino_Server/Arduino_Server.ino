@@ -85,6 +85,7 @@ void setup() {
 
   radio.openReadingPipe(1,pipes[1]);
     radio.printDetails();
+    delay(3000);
 }
 
 void loop() {
@@ -92,10 +93,10 @@ void loop() {
   
   // forever loop
 
-      retryFetchSensor(0, 100, 50);
-      retryFetchSensor(2, 100, 50);
+      retryFetchSensor(0, 5, 100);
+      retryFetchSensor(2, 5, 100);
 
-      delay(2000);
+      delay(1000);
       printNodes();
 }
 

@@ -113,7 +113,7 @@ cout << "0" << ltm->tm_min << ":";
   return 0;
 }
 void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
-	printf("Fetching.. %1d \n",nodeAddress);
+//printf("Fetching.. %1d \n",nodeAddress);
   bool max_attempts = false;
   int att_counter = 0;
   bool ok = false;

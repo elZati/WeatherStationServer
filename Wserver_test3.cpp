@@ -99,10 +99,23 @@ cout << "0" << ltm->tm_min << ":";
 	while (1)
 	{
 	
-		retryFetchSensor(0, 5, 100);
+/* 		retryFetchSensor(0, 5, 100);
 		retryFetchSensor(2, 5, 100);
 		sleep(2);
-		printNodes();
+		printNodes(); */
+		
+				bool ok = fetchSensor(0);
+			if(!ok) {
+				printf("*** Node address 0 failed. ** \n");
+			}
+			bool ok2 = fetchSensor(2);
+			if(!ok2) {
+				printf("*** Node address 2 failed. ** \n");
+			}
+			sleep(2);
+			printNodes();	
+	
+	
 
 	} // forever loop
 	

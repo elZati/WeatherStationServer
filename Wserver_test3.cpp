@@ -99,8 +99,8 @@ cout << "0" << ltm->tm_min << ":";
 	while (1)
 	{
 	
- 		retryFetchSensor(0, 5, 100);
-		retryFetchSensor(2, 5, 100);
+ 		retryFetchSensor(0, 5, 0.1);
+		retryFetchSensor(2, 5, 0.1);
 		sleep(2);
 		printNodes();	
 	

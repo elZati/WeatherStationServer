@@ -34,7 +34,7 @@ SensorPayload SensorNode2;
 // function declaration
 bool fetchSensor(int nodeAddress);
 void printNodes();
-void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime)
+void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;

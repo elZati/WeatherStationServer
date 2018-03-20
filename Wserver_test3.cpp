@@ -34,7 +34,7 @@ SensorPayload SensorNode2;
 // function declaration
 bool fetchSensor(int nodeAddress);
 void printNodes();
-void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime)
+void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
@@ -99,10 +99,12 @@ cout << "0" << ltm->tm_min << ":";
 	while (1)
 	{
 	
-		retryFetchSensor(0, 5, 100);
-		retryFetchSensor(2, 5, 100);
+ 		retryFetchSensor(0, 5, 0.1);
+		retryFetchSensor(2, 5, 0.1);
 		sleep(2);
-		printNodes();
+		printNodes();	
+	
+	
 
 	} // forever loop
 	
@@ -111,7 +113,7 @@ cout << "0" << ltm->tm_min << ":";
   return 0;
 }
 void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
-
+//printf("Fetching.. %1d \n",nodeAddress);
   bool max_attempts = false;
   int att_counter = 0;
   bool ok = false;

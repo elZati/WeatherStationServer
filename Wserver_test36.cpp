@@ -104,9 +104,10 @@ cout << "0" << ltm->tm_min << ":";
 	
  		retryFetchSensor(0, 5, 0.1);
 		retryFetchSensor(2, 5, 0.1);
+		sleep(5*60);
 		printNodes();	
 		uploadData();
-		sleep(5);
+		
 
 	} // forever loop
 	

@@ -106,7 +106,7 @@ cout << "0" << ltm->tm_min << ":";
 		retryFetchSensor(2, 5, 0.1);
 		printNodes();	
 		uploadData();
-		sleep(60*5);
+		sleep(5);
 
 	} // forever loop
 	
@@ -262,7 +262,7 @@ void uploadData(void) {
 	snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
 	char buffer2[80];
 	float myFloat2 = SensorNode2.sensor1;
-	snprintf(buffer,sizeof(buffer2),"%4.1f",myFloat2);
+	snprintf(buffer2,sizeof(buffer2),"%4.1f",myFloat2);
 	char str[80];
 	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
 	strcat(str,buffer2);	

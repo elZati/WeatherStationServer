@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include "RF24.h"
 #include <ctime>
+#include <stdio.h>
+#include <curl/curl.h>
 
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging

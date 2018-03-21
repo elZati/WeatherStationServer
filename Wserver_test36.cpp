@@ -258,8 +258,10 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 void uploadData(void) {
 
-	char turl[]="www.google.fi";
-
+	char str[80];
+	stpcpy(str,"www.");
+	strcat(str,"google.fi");
+	puts (str);
 
 	CURL *curl;
 	CURLcode res;
@@ -268,7 +270,7 @@ void uploadData(void) {
 
 	curl = curl_easy_init();
 	if (curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, turl);
+		curl_easy_setopt(curl, CURLOPT_URL, str);
 
 #ifdef SKIP_PEER_VERIFICATION
 		/*

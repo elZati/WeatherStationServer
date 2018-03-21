@@ -307,7 +307,7 @@ void uploadData(void) {
 
 	curl_global_cleanup();
 
-	return 0;
+	return;
 
 }
 

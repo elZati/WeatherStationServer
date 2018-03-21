@@ -260,9 +260,13 @@ void uploadData(void) {
 
 	char buffer[80];
 	float myFloat = SensorNode1.sensor1;
-	int ret = snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
+	snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
+	char buffer2[80];
+	float myFloat2 = SensorNode2.sensor1;
+	snprintf(buffer,sizeof(buffer2),"%4.1f",myFloat2);
 	char str[80];
-	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=22.0");	
+	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
+	strcat(str,buffer2);	
 	strcat(str,"&temp=");
 	strcat(str,buffer);
 	puts (str);

@@ -258,8 +258,12 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 void uploadData(void) {
 
+	char buffer[80];
+	float myFloat = 22.22;
+	int ret = snprintf(buffer,sizeof(buffer),"%f",myFloat);
 	char str[80];
-	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=22.0");
+	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
+	strcat(str,buffer);
 	strcat(str,"&temp=32.0");
 	puts (str);
 

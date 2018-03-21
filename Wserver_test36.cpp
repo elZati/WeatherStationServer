@@ -259,12 +259,12 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 void uploadData(void) {
 
 	char buffer[80];
-	float myFloat = 22.22;
-	int ret = snprintf(buffer,sizeof(buffer),"%f",myFloat);
+	float myFloat = SensorNode1.sensor1;
+	int ret = snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
 	char str[80];
-	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
+	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=22.0");	
+	strcat(str,"&temp=");
 	strcat(str,buffer);
-	strcat(str,"&temp=32.0");
 	puts (str);
 
 	CURL *curl;

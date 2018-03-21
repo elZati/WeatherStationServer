@@ -15,7 +15,7 @@
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
 #define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
-
+#define clear() printf("\033[H\033[J")
 
 using namespace std;
 
@@ -198,7 +198,7 @@ void printNodes(){
 	
 if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 {
-	
+	clear();
 	
 	if(node1_enable) {
 

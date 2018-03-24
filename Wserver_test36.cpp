@@ -336,31 +336,31 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 }
 
 char* retTemperature(float value){
-	char buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80 * sizeof(char));
 	if(value >= 0){
-	snprintf(buffer,sizeof(buffer),"%3.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%3.1f",value);
 	}else{
-	snprintf(buffer,sizeof(buffer),"%4.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%4.1f",value);
 	}	
 	return buffer1;
 }
 
 char* retPressure(float value){
-	char buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80 * sizeof(char));
 	if(value >= 1000){
-	snprintf(buffer,sizeof(buffer),"%6.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%6.1f",value);
 	}else{
-	snprintf(buffer,sizeof(buffer),"%5.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%5.1f",value);
 	}	
 	return buffer1;
 }
 
 char* retHumidity(float value){
-	char buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80 * sizeof(char));
 	if(value >= 100){
-	snprintf(buffer,sizeof(buffer),"%4.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%4.1f",value);
 	}else{
-	snprintf(buffer,sizeof(buffer),"%3.1f",value);
+	snprintf(buffer1,sizeof(buffer1),"%3.1f",value);
 	}	
 	return buffer1;
 }

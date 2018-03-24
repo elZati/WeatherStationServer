@@ -15,7 +15,7 @@
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
 #define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
-#define NODE_UPLOAD_DELAY (1000*5*60) //Delay between printing node values 
+#define NODE_UPLOAD_DELAY (9000) //Delay between printing node values 
 #define clear() printf("\033[H\033[J")
 
 using namespace std;
@@ -267,15 +267,15 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 
 	char str[120];
 	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
-	strcat(str,retTemperature(SensorNode2.sensor1));	
+	strcat(str,&retTemperature(SensorNode2.sensor1));	
 	strcat(str,"&temp=");
-	strcat(str,retTemperature(SensorNode1.sensor1));
+	strcat(str,&retTemperature(SensorNode1.sensor1));
 	strcat(str,"&humin=");
-	strcat(str,retHumidity(SensorNode2.sensor2));
+	strcat(str,&retHumidity(SensorNode2.sensor2));
 	strcat(str,"&hum=");
-	strcat(str,retHumidity(SensorNode1.sensor2));
+	strcat(str,&retHumidity(SensorNode1.sensor2));
 	strcat(str,"&press=");
-	strcat(str,retPressure(SensorNode1.sensor3));
+	strcat(str,&retPressure(SensorNode1.sensor3));
 	puts (str);
 
 	CURL *curl;

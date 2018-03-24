@@ -336,7 +336,7 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 }
 
 char* retTemperature(float value){
-	char* buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80);
 	if(value >= 0){
 	snprintf(buffer1,sizeof(buffer1),"%3.1f",value);
 	}else{
@@ -346,7 +346,7 @@ char* retTemperature(float value){
 }
 
 char* retPressure(float value){
-	char* buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80);
 	if(value >= 1000){
 	snprintf(buffer1,sizeof(buffer1),"%6.1f",value);
 	}else{
@@ -356,7 +356,7 @@ char* retPressure(float value){
 }
 
 char* retHumidity(float value){
-	char* buffer1 = malloc(80 * sizeof(char));
+	char* buffer1 = malloc(80);
 	if(value >= 100){
 	snprintf(buffer1,sizeof(buffer1),"%4.1f",value);
 	}else{

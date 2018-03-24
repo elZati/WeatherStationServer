@@ -262,7 +262,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 void uploadData(void) {
 	
-if (millis()-last_printout > NODE_PRINTOUT_DELAY)
+if (millis()-last_upload > NODE_UPLOAD_DELAY)
 {
 
 	char str[120];

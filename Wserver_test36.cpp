@@ -39,9 +39,9 @@ bool fetchSensor(int nodeAddress);
 void printNodes();
 void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
-char[] retTemperature(float value);
-char[]retHumidity(float value);
-char[]retPressure(float value);
+char retTemperature(float value);
+char retHumidity(float value);
+char retPressure(float value);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
@@ -330,7 +330,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 }
 
-char[] retTemperature(float value){
+char retTemperature(float value){
 	char buffer[80];
 	if(value >= 0){
 	snprintf(buffer,sizeof(buffer),"%3.1f",value);
@@ -340,7 +340,7 @@ char[] retTemperature(float value){
 	return buffer;
 }
 
-char[] retPressure(float value){
+char retPressure(float value){
 	char buffer[80];
 	if(value >= 1000){
 	snprintf(buffer,sizeof(buffer),"%6.1f",value);
@@ -350,7 +350,7 @@ char[] retPressure(float value){
 	return buffer;
 }
 
-char[] retHumidity(float value){
+char retHumidity(float value){
 	char buffer[80];
 	if(value >= 100){
 	snprintf(buffer,sizeof(buffer),"%4.1f",value);

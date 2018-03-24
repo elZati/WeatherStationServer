@@ -37,7 +37,7 @@ void printNodes();
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
-const int initialize_cmd = 12345;
+short int initialize_cmd = 12345;
 float sensor1 = 0;
 /********************************/
 
@@ -83,10 +83,10 @@ cout << "0" << ltm->tm_min << ":";
 
   // optionally, increase the delay between retries & # of retries
 	radio.setRetries(15,15);
-	radio.setPALevel(RF24_PA_MAX);
-	radio.setAutoAck(1);
-	radio.enableDynamicPayloads();
-	radio.setDataRate(RF24_1MBPS);
+	//radio.setPALevel(RF24_PA_MAX);
+	//radio.setAutoAck(1);
+	//radio.enableDynamicPayloads();
+	//radio.setDataRate(RF24_1MBPS);
 
 
 
@@ -101,6 +101,7 @@ cout << "0" << ltm->tm_min << ":";
 			if(!ok) {
 				printf("*** Node address 0 failed. ** \n");
 			}
+			
 			bool ok2 = fetchSensor(2);
 			if(!ok2) {
 				printf("*** Node address 2 failed. ** \n");
@@ -121,6 +122,7 @@ bool fetchSensor(int nodeAddress) {
 	SensorPayload buffer;
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
+	radio.startListening();
 	radio.stopListening();
 	  
 		// Take the time, and send it.  This will block until complete
@@ -128,7 +130,7 @@ bool fetchSensor(int nodeAddress) {
 		printf("Now sending...");
 
 
-		bool ok = radio.write( &initialize_cmd, sizeof(int) );
+		bool ok = radio.write( &initialize_cmd, 2 );
 
 		if (!ok){
 				printf("Failed to write.\n");
@@ -161,7 +163,7 @@ bool fetchSensor(int nodeAddress) {
 
 			// Grab the response, compare, and send to debugging spew
 				
-			radio.read( &buffer, sizeof(SensorPayload) );
+			radio.read( &buffer, 16);
 			
 			if(nodeAddress == 0)
 			{

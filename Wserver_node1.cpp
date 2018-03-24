@@ -74,7 +74,7 @@ cout << "0" << ltm->tm_min << ":";
 	{
 	
 			bool ok = fetchSensor(pipes[0]);
-			sleep(5);
+			sleep(15);
 		
 
 

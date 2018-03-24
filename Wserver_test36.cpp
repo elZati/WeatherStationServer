@@ -260,7 +260,11 @@ void uploadData(void) {
 
 	char buffer[80];
 	float myFloat = SensorNode1.sensor1;
+	if(myFloat >= 0){
+	snprintf(buffer,sizeof(buffer),"%3.1f",myFloat);
+	}else{
 	snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
+	}
 	char buffer2[80];
 	float myFloat2 = SensorNode2.sensor1;
 	snprintf(buffer2,sizeof(buffer2),"%4.1f",myFloat2);

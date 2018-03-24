@@ -267,15 +267,15 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 
 	char str[120];
 	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
-	strcat(str,&retTemperature(SensorNode2.sensor1));	
+	strcat(str,retTemperature(SensorNode2.sensor1));	
 	strcat(str,"&temp=");
-	strcat(str,&retTemperature(SensorNode1.sensor1));
+	strcat(str,retTemperature(SensorNode1.sensor1));
 	strcat(str,"&humin=");
-	strcat(str,&retHumidity(SensorNode2.sensor2));
+	strcat(str,retHumidity(SensorNode2.sensor2));
 	strcat(str,"&hum=");
-	strcat(str,&retHumidity(SensorNode1.sensor2));
+	strcat(str,retHumidity(SensorNode1.sensor2));
 	strcat(str,"&press=");
-	strcat(str,&retPressure(SensorNode1.sensor3));
+	strcat(str,retPressure(SensorNode1.sensor3));
 	puts (str);
 
 	CURL *curl;
@@ -331,32 +331,32 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 }
 
 char* retTemperature(float value){
-	char buffer[80];
+	char buffer1[80];
 	if(value >= 0){
 	snprintf(buffer,sizeof(buffer),"%3.1f",value);
 	}else{
 	snprintf(buffer,sizeof(buffer),"%4.1f",value);
 	}	
-	return buffer;
+	return buffer1;
 }
 
 char* retPressure(float value){
-	char buffer[80];
+	char buffer2[80];
 	if(value >= 1000){
 	snprintf(buffer,sizeof(buffer),"%6.1f",value);
 	}else{
 	snprintf(buffer,sizeof(buffer),"%5.1f",value);
 	}	
-	return buffer;
+	return buffer2;
 }
 
 char* retHumidity(float value){
-	char buffer[80];
+	char buffer3[80];
 	if(value >= 100){
 	snprintf(buffer,sizeof(buffer),"%4.1f",value);
 	}else{
 	snprintf(buffer,sizeof(buffer),"%3.1f",value);
 	}	
-	return buffer;
+	return buffer3;
 }
 

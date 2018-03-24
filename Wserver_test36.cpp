@@ -15,7 +15,6 @@
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
 #define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
-#define NODE_UPLOAD_DELAY (9000) //Delay between printing node values 
 #define clear() printf("\033[H\033[J")
 
 using namespace std;
@@ -39,9 +38,9 @@ bool fetchSensor(int nodeAddress);
 void printNodes();
 void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
-char* retTemperature(float value);
-char* retHumidity(float value);
-char* retPressure(float value);
+string retTemperature(float value);
+string retHumidity(float value);
+string retPressure(float value);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
@@ -68,7 +67,7 @@ string node2_name = "INDOOR SENSOR";
 const uint8_t pipes[][6] = {"1Node","2Node","3node"};
 
 long last_printout = millis();
-long last_upload = millis();
+
 
 int main(int argc, char** argv){
 
@@ -108,8 +107,8 @@ cout << "0" << ltm->tm_min << ":";
 	
  		retryFetchSensor(0, 5, 0.1);
 		retryFetchSensor(2, 5, 0.1);
-		sleep(5);
-		printNodes();		
+		sleep(5*60);
+		printNodes();	
 		uploadData();
 		
 
@@ -261,21 +260,24 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 }
 
 void uploadData(void) {
-	
-if (millis()-last_upload > NODE_UPLOAD_DELAY)
-{
 
+	char buffer[80];
+	float myFloat = SensorNode1.sensor1;
+	if(myFloat >= 0){
+	snprintf(buffer,sizeof(buffer),"%3.1f",myFloat);
+	}else{
+	snprintf(buffer,sizeof(buffer),"%4.1f",myFloat);
+	}
+	char buffer2[80];
+	float myFloat2 = SensorNode2.sensor1;
+	snprintf(buffer2,sizeof(buffer2),"%4.1f",myFloat2);
 	char str[120];
 	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
-	strcat(str,foo1=retTemperature(SensorNode2.sensor1));	
+	strcat(str,buffer2);	
 	strcat(str,"&temp=");
-	strcat(str,foo2=retTemperature(SensorNode1.sensor1));
-	strcat(str,"&humin=");
-	strcat(str,foo3=retHumidity(SensorNode2.sensor2));
-	strcat(str,"&hum=");
-	strcat(str,foo4=retHumidity(SensorNode1.sensor2));
-	strcat(str,"&press=");
-	strcat(str,foo5=retPressure(SensorNode1.sensor3));
+	strcat(str,buffer);
+	strcat(str,"&humin=40");
+	strcat(str,"&hum=20");
 	puts (str);
 
 	CURL *curl;
@@ -323,45 +325,38 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY)
 	}
 
 	curl_global_cleanup();
-	last_upload = millis();
-	free(foo1); 
-	free(foo2); 
-	free(foo3); 
-	free(foo4); 
-	free(foo5); 
-}
 
 	return;
 
 }
 
-char* retTemperature(float value){
-	char* buffer1 = malloc(80);
+string retTemperature(float value){
+	char buffer[80];
 	if(value >= 0){
-	snprintf(buffer1,sizeof(buffer1),"%3.1f",value);
+	snprintf(buffer,sizeof(buffer),"%3.1f",value);
 	}else{
-	snprintf(buffer1,sizeof(buffer1),"%4.1f",value);
+	snprintf(buffer,sizeof(buffer),"%4.1f",value);
 	}	
-	return buffer1;
+	return buffer;
 }
 
-char* retPressure(float value){
-	char* buffer1 = malloc(80);
+string retPressure(float value){
+	char buffer[80];
 	if(value >= 1000){
-	snprintf(buffer1,sizeof(buffer1),"%6.1f",value);
+	snprintf(buffer,sizeof(buffer),"%6.1f",value);
 	}else{
-	snprintf(buffer1,sizeof(buffer1),"%5.1f",value);
+	snprintf(buffer,sizeof(buffer),"%5.1f",value);
 	}	
-	return buffer1;
+	return buffer;
 }
 
-char* retHumidity(float value){
-	char* buffer1 = malloc(80);
+string retHumidity(float value){
+	char buffer[80];
 	if(value >= 100){
-	snprintf(buffer1,sizeof(buffer1),"%4.1f",value);
+	snprintf(buffer,sizeof(buffer),"%4.1f",value);
 	}else{
-	snprintf(buffer1,sizeof(buffer1),"%3.1f",value);
+	snprintf(buffer,sizeof(buffer),"%3.1f",value);
 	}	
-	return buffer1;
+	return buffer;
 }
 

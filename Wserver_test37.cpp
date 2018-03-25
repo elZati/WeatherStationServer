@@ -260,11 +260,11 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 }
 
 void uploadData(void) {
-	char tempBuffer1[80];
-	char tempBuffer2[80];
-	char humBuffer1[80];
-	char humBuffer2[80];
-	char pressBuffer1[80];
+	char tempBuffer1[80]; //Don't change the buffer size.
+	char tempBuffer2[80]; //Don't change the buffer size.
+	char humBuffer1[80]; //Don't change the buffer size.
+	char humBuffer2[80]; //Don't change the buffer size.
+	char pressBuffer1[80]; //Don't change the buffer size.
 	
 	retTemperature(tempBuffer1, SensorNode1.sensor1);
 	retTemperature(tempBuffer2, SensorNode2.sensor1);
@@ -340,7 +340,7 @@ void uploadData(void) {
 void retTemperature(char *buff, float value){
 	
 	if(value >= 0){
-	snprintf(buff,sizeof(*buff),"%1.1f",value);
+	snprintf(buff,sizeof(&buff),"%1.1f",value);
 	}else{
 	snprintf(buff,80,"%1.1f",value);
 	}	

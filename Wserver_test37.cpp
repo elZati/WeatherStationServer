@@ -140,7 +140,7 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 bool fetchSensor(int nodeAddress) {
 	
 	SensorNode1 = 0;
-	SensorNode2 = 0:
+	SensorNode2 = 0;
 	SensorPayload buffer;
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);

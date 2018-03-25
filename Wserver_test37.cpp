@@ -340,7 +340,7 @@ void uploadData(void) {
 void retTemperature(char *buff, float value){
 	
 	if(value >= 0){
-	snprintf(buff,80,"%1.1f",value);
+	snprintf(buff,sizeof(*buff),"%1.1f",value);
 	}else{
 	snprintf(buff,80,"%1.1f",value);
 	}	

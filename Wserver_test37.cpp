@@ -40,7 +40,7 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
 void retTemperature(char *buff, float value)
 void retHumidity(char *buff, float value);
-voidretPressure(char *buff, float value);
+void retPressure(char *buff, float value);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;

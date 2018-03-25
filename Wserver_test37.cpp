@@ -42,6 +42,7 @@ void uploadData(void);
 void retTemperature(char *buff, float value);
 void retHumidity(char *buff, float value);
 void retPressure(char *buff, float value);
+void clearResults(void);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
@@ -139,8 +140,7 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 
 bool fetchSensor(int nodeAddress) {
 	
-	SensorNode1 = 0;
-	SensorNode2 = 0;
+	clearResults();
 	SensorPayload buffer;
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
@@ -367,5 +367,13 @@ void retHumidity(char *buff, float value){
 	}else{
 	snprintf(buff,80,"%1.1f",value);
 	}	
+}
+
+void clearResults(void){
+	SensorNode1.sensor1 = 0;
+	SensorNode1.sensor2 = 0;
+	SensorNode1.sensor3 = 0;
+	SensorNode2.sensor1 = 0;
+	SensorNode2.sensor2 = 0;
 }
 

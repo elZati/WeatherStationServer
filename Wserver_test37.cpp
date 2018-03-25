@@ -348,17 +348,17 @@ void retTemperature(char *buff, float value){
 
 void retPressure(char *buff, float value){
 	if(value >= 1000){
-	snprintf(buff,sizeof(buff),"%1.1f",value);
+	snprintf(buff,80,"%1.1f",value);
 	}else{
-	snprintf(buff,sizeof(buff),"%1.1f",value);
+	snprintf(buff,80,"%1.1f",value);
 	}	
 }
 
 void retHumidity(char *buff, float value){
 	if(value >= 100){
-	snprintf(buff,sizeof(buff),"%1.1f",value);
+	snprintf(buff,80,"%1.1f",value);
 	}else{
-	snprintf(buff,sizeof(buff),"%1.1f",value);
+	snprintf(buff,80,"%1.1f",value);
 	}	
 }
 

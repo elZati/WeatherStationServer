@@ -107,7 +107,7 @@ cout << "0" << ltm->tm_min << ":";
 	// forever loop
 	while (1)
 	{
-	
+		clearResults();
  		retryFetchSensor(0, 5, 0.1);
 		retryFetchSensor(2, 5, 0.1);
 		sleep(5);
@@ -140,7 +140,6 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 
 bool fetchSensor(int nodeAddress) {
 	
-	clearResults();
 	SensorPayload buffer;
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);

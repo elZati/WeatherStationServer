@@ -38,7 +38,7 @@ bool fetchSensor(int nodeAddress);
 void printNodes();
 void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
-void retTemperature(char *buff, float value)
+void retTemperature(char *buff, float value);
 void retHumidity(char *buff, float value);
 void retPressure(char *buff, float value);
 /********** User Config *********/

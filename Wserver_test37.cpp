@@ -16,6 +16,7 @@
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
 #define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
 #define NODE_UPLOAD_DELAY (1000*60*5) //Delay between uploading node values 
+#define NODE_SEEN_DELAY (1000*60*15) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
 
 using namespace std;
@@ -42,7 +43,7 @@ void uploadData(void);
 void retTemperature(char *buff, float value);
 void retHumidity(char *buff, float value);
 void retPressure(char *buff, float value);
-void clearResults(void);
+void checkNodes(void);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
 bool radioNumber = 0;
@@ -71,9 +72,11 @@ const uint8_t pipes[][6] = {"1Node","2Node","3node"};
 long last_printout = millis();
 long last_upload = millis();
 
+long last_seenSensor1 = millis();
+long last_seenSensor2 = millis();
 
 int main(int argc, char** argv){
-
+	clear();
 	cout << "Weather Station Server for RPi" << endl;
 	time_t now = time(0);
 	tm *ltm = localtime(&now);
@@ -107,7 +110,7 @@ cout << "0" << ltm->tm_min << ":";
 	// forever loop
 	while (1)
 	{
-		clearResults();
+		checkNodes();
  		retryFetchSensor(0, 5, 0.1);
 		retryFetchSensor(2, 5, 0.1);
 		sleep(5);
@@ -188,10 +191,12 @@ bool fetchSensor(int nodeAddress) {
 			if(nodeAddress == 0)
 			{
 				SensorNode1 = buffer;
+				last_seenSensor1 = millis();
 			}
 			if(nodeAddress == 2)
 			{
 				SensorNode2 = buffer;
+				last_seenSensor2 = millis();
 			}
 			radio.stopListening();
 			//radio.begin();
@@ -368,11 +373,19 @@ void retHumidity(char *buff, float value){
 	}	
 }
 
-void clearResults(void){
+void checkNodes(void){
+	
+	if (millis()-last_seenSensor1 > NODE_SEEN_DELAY) {
 	SensorNode1.sensor1 = 0;
 	SensorNode1.sensor2 = 0;
 	SensorNode1.sensor3 = 0;
+	printf("********************* NODE1 DEAD ************************************ \n");
+	}
+	
+	if (millis()-last_seenSensor2 > NODE_SEEN_DELAY) {
 	SensorNode2.sensor1 = 0;
 	SensorNode2.sensor2 = 0;
+	printf("********************* NODE2 DEAD ************************************ \n");
+	}
 }
 

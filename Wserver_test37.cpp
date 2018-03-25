@@ -15,6 +15,7 @@
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
 #define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
+#define NODE_UPLOAD_DELAY (1000*60*5) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
 
 using namespace std;
@@ -67,6 +68,7 @@ string node2_name = "INDOOR SENSOR";
 const uint8_t pipes[][6] = {"1Node","2Node","3node"};
 
 long last_printout = millis();
+long last_upload = millis();
 
 
 int main(int argc, char** argv){
@@ -137,7 +139,8 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 
 bool fetchSensor(int nodeAddress) {
 	
-	
+	SensorNode1 = 0;
+	SensorNode2 = 0:
 	SensorPayload buffer;
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
@@ -260,6 +263,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 }
 
 void uploadData(void) {
+	
+if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 	char tempBuffer1[80]; //Don't change the buffer size.
 	char tempBuffer2[80]; //Don't change the buffer size.
 	char humBuffer1[80]; //Don't change the buffer size.
@@ -332,6 +337,8 @@ void uploadData(void) {
 	}
 
 	curl_global_cleanup();
+	last_upload = millis();
+}
 
 	return;
 
@@ -340,7 +347,7 @@ void uploadData(void) {
 void retTemperature(char *buff, float value){
 	
 	if(value >= 0){
-	snprintf(buff,sizeof(&buff),"%1.1f",value);
+	snprintf(buff,80,"%1.1f",value);
 	}else{
 	snprintf(buff,80,"%1.1f",value);
 	}	

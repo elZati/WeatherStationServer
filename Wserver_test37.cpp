@@ -340,25 +340,25 @@ void uploadData(void) {
 void retTemperature(char *buff, float value){
 	
 	if(value >= 0){
-	snprintf(buff,sizeof(buff),"%3.1f",value);
-	}else{
 	snprintf(buff,sizeof(buff),"%4.1f",value);
-	}	
-}
-
-void retPressure(char *buff, float value){
-	if(value >= 1000){
-	snprintf(buff,sizeof(buff),"%6.1f",value);
 	}else{
 	snprintf(buff,sizeof(buff),"%5.1f",value);
 	}	
 }
 
+void retPressure(char *buff, float value){
+	if(value >= 1000){
+	snprintf(buff,sizeof(buff),"%7.1f",value);
+	}else{
+	snprintf(buff,sizeof(buff),"%6.1f",value);
+	}	
+}
+
 void retHumidity(char *buff, float value){
 	if(value >= 100){
-	snprintf(buff,sizeof(buff),"%4.1f",value);
+	snprintf(buff,sizeof(buff),"%5.1f",value);
 	}else{
-	snprintf(buff,sizeof(buff),"%3.1f",value);
+	snprintf(buff,sizeof(buff),"%4.1f",value);
 	}	
 }
 

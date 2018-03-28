@@ -48,11 +48,11 @@ sensorPayload packet;
 
 void setup() {
   Serial.begin(57600);
-  randomSeed(analogRead(0));
-  packet = {random(10, 20), 22.22, 33.33, 44.44};
+  //randomSeed(analogRead(0));
+  //packet = {random(10, 20), 22.22, 33.33, 44.44};
 
   //Configure the humidity sensor
-  //myHumidity.begin();
+  myHumidity.begin();
   
   pinMode(2, INPUT);
   radio.begin();
@@ -81,7 +81,7 @@ void setup() {
 void loop() {
   
 /****************** Sensor Node Role ***************************/
-//sleepNow();
+sleepNow();
 
  
 if(radio.available())
@@ -138,12 +138,11 @@ bool sendSensordata(){
 
 void poll_sensors(){
 
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
+  packet.sensor2 = myHumidity.readHumidity();
+  packet.sensor1 = myHumidity.readTemperature();
+  packet.sensor3 = myHumidity.readHumidity();
+  packet.sensor4 = myHumidity.readTemperature();
 
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
-  packet = {random(10, 20), 22.22, 33.33, 44.44};
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);
   Serial.print("Humidity = ");

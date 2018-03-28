@@ -40,7 +40,7 @@ SensorPayload SensorNode1_avg;
 SensorPayload SensorNode2_avg;
 
 int node1_count = 0;
-int node2_cound = 0;
+int node2_count = 0;
 
 // function declaration
 bool fetchSensor(int nodeAddress);
@@ -51,7 +51,7 @@ void retTemperature(char *buff, float value);
 void retHumidity(char *buff, float value);
 void retPressure(char *buff, float value);
 void checkNodes(void);
-void storeReading(struct sensorPayload data, int node;
+void storeReading(struct SensorPayload data, int node);
 void clearAvgs(void);
 /********** User Config *********/
 // Assign a unique identifier for this node, 0 or 1
@@ -200,13 +200,13 @@ bool fetchSensor(int nodeAddress) {
 			if(nodeAddress == 0)
 			{
 				SensorNode1 = buffer;
-				storeReading(SensorNode1, 1)
+				storeReading(SensorNode1, 1);
 				last_seenSensor1 = millis();
 			}
 			if(nodeAddress == 2)
 			{
 				SensorNode2 = buffer;
-				storeReading(SensorNode2, 2)
+				storeReading(SensorNode2, 2);
 				last_seenSensor2 = millis();
 			}
 			radio.stopListening();
@@ -404,9 +404,9 @@ void checkNodes(void){
 }
 
 
-void storeReading(struct sensorPayload data, int node) {
+void storeReading(struct SensorPayload data, int node) {
 
-	if (!data.sensor1 == 0 && !data.sensor2 == 0 !data.sensor3 == 0 !data.sensor4 == 0){
+	if (!data.sensor1 == 0 && !data.sensor2 == 0 && !data.sensor3 == 0 && !data.sensor4 == 0){
 
 	if (node == 1){
 		SensorNode1_avg_temp.sensor1 += data.sensor1;

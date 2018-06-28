@@ -237,7 +237,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " <<  node1_name << " MESSAGE ************************" << endl;
 			
-			time_t now = time(0);
+
 			tm *ltm = localtime(&now);
 
 
@@ -263,7 +263,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " << node2_name << "  MESSAGE ************************" << endl;
 			
-			time_t now = time(0);
+
 			tm *ltm = localtime(&now);
 
 
@@ -443,10 +443,10 @@ void storeReading(struct SensorPayload data, int node) {
 		SensorNode2_avg_temp.sensor4 += data.sensor4;
 		node2_count++;
 
-		SensorNode2_avg.sensor1 = SensorNode2_avg_temp.sensor1 / node1_count;
-		SensorNode2_avg.sensor2 = SensorNode2_avg_temp.sensor2 / node1_count;
-		SensorNode2_avg.sensor3 = SensorNode2_avg_temp.sensor3 / node1_count;
-		SensorNode2_avg.sensor4 = SensorNode2_avg_temp.sensor4 / node1_count;
+		SensorNode2_avg.sensor1 = SensorNode2_avg_temp.sensor1 / node2_count;
+		SensorNode2_avg.sensor2 = SensorNode2_avg_temp.sensor2 / node2_count;
+		SensorNode2_avg.sensor3 = SensorNode2_avg_temp.sensor3 / node2_count;
+		SensorNode2_avg.sensor4 = SensorNode2_avg_temp.sensor4 / node2_count;
 
 		//printf("Average reading for Node2 Temperature: %1.1f \302\260C\n", SensorNode2_avg.sensor1);
 	}

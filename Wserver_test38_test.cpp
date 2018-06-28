@@ -107,7 +107,7 @@ cout << "0" << ltm->tm_min << ":";
 
 	//optionally, increase the delay between retries & # of retries
 	radio.setRetries(15,15);
-	radio.setPALevel(RF24_PA_HIGH);
+	radio.setPALevel(RF24_PA_MAX);
 	//radio.setAutoAck(1);
 	//radio.enableDynamicPayloads();
 	radio.setDataRate(RF24_1MBPS);

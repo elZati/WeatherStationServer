@@ -238,7 +238,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << "***************** " <<  node1_name << " MESSAGE ************************" << endl;
 			
 
-			tm *ltm = localtime(&now);
+			tm *ltm = localtime(&sensor1_received);
 
 
 			cout << "Receive Time: " << ltm->tm_hour << ":";
@@ -264,7 +264,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << "***************** " << node2_name << "  MESSAGE ************************" << endl;
 			
 
-			tm *ltm = localtime(&now);
+			tm *ltm = localtime(&sensor2_received);
 
 
 			cout << "Receive Time: " << ltm->tm_hour << ":";

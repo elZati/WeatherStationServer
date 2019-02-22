@@ -61,6 +61,7 @@ bool node4_enable = false;
 bool node5_enable = false;
 
 time_t S1 = time(0);
+tm *ltm = localtime(&S1);
 
 
 string node1_name = "OUTDOOR SENSOR"; //enter name of node

@@ -60,9 +60,9 @@ bool node3_enable = true;
 bool node4_enable = false;
 bool node5_enable = false;
 
-string  node1_name = "OUTDOOR SENSOR"; //enter name of node
+string node1_name = "OUTDOOR SENSOR"; //enter name of node
 string node2_name = "INDOOR SENSOR";
- string node2_name = "TEST SENSOR";
+string node3_name = "TEST SENSOR";
 
 //***********************************
 

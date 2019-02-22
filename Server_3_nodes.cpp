@@ -60,6 +60,9 @@ bool node3_enable = true;
 bool node4_enable = false;
 bool node5_enable = false;
 
+time_t S1 = time(0);
+
+
 string node1_name = "OUTDOOR SENSOR"; //enter name of node
 string node2_name = "INDOOR SENSOR";
 string node3_name = "TEST SENSOR";
@@ -194,6 +197,7 @@ bool fetchSensor(int nodeAddress) {
 			{
 				SensorNode1 = buffer;
 				last_seenSensor1 = millis();
+				time_t S1 = time(0);
 			}
 			if(nodeAddress == 2)
 			{
@@ -222,9 +226,10 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " <<  node1_name << " MESSAGE ************************" << endl;
 			
-			time_t now = time(0);
-			tm *ltm = localtime(&now);
-
+			//time_t now = time(0);
+			//tm *ltm = localtime(&now);
+			
+			tm *ltm = localtime(&S1);
 
 			cout << "Receive Time: " << ltm->tm_hour << ":";
 			if(ltm->tm_min >= 10){

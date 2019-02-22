@@ -33,7 +33,7 @@ struct SensorPayload {
 
 SensorPayload SensorNode1;
 SensorPayload SensorNode2;
-
+SensorPayload SensorNode3;
 
 // function declaration
 bool fetchSensor(int nodeAddress);

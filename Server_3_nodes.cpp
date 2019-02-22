@@ -74,6 +74,7 @@ long last_upload = millis();
 
 long last_seenSensor1 = millis();
 long last_seenSensor2 = millis();
+long last_seenSensor3 = millis();
 
 int main(int argc, char** argv){
 	clear();

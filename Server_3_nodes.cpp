@@ -269,7 +269,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode2.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");
@@ -293,7 +293,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode3.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode3.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");

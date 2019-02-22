@@ -61,8 +61,8 @@ bool node4_enable = false;
 bool node5_enable = false;
 
 time_t S1;
-
-
+time_t S2;
+time_t S3;
 
 string node1_name = "OUTDOOR SENSOR"; //enter name of node
 string node2_name = "INDOOR SENSOR";
@@ -205,11 +205,13 @@ bool fetchSensor(int nodeAddress) {
 			{
 				SensorNode2 = buffer;
 				last_seenSensor2 = millis();
+				S2 = time(0);
 			}
 			if(nodeAddress == 1)
 			{
 				SensorNode3 = buffer;
 				last_seenSensor3 = millis();
+				S3 = time(0);
 			}
 			radio.stopListening();
 			//radio.begin();
@@ -228,7 +230,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " <<  node1_name << " MESSAGE ************************" << endl;
 			
-			//time_t now = time(0);
+			
 			tm *ltm = localtime(&S1);
 			
 
@@ -242,7 +244,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode1.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode1.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
@@ -253,8 +255,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " << node2_name << "  MESSAGE ************************" << endl;
 			
-			time_t now = time(0);
-			tm *ltm = localtime(&now);
+		
+			tm *ltm = localtime(&S2);
 
 
 			cout << "Receive Time: " << ltm->tm_hour << ":";
@@ -277,8 +279,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 			cout << "***************** " << node3_name << "  MESSAGE ************************" << endl;
 			
-			time_t now = time(0);
-			tm *ltm = localtime(&now);
+			
+			tm *ltm = localtime(&S3);
 
 
 			cout << "Receive Time: " << ltm->tm_hour << ":";

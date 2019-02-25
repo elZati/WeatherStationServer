@@ -230,14 +230,16 @@ void poll_sensors(){
   //packet.sensor2 = myHumidity.readHumidity();
   //packet.sensor1 = myHumidity.readTemperature();
 
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
-  packet = {myHumidity.readTemperature(), myHumidity.readHumidity(), 33.33, 44.44};
+  packet.sensor2 = myHumidity.readHumidity();
+  packet.sensor1 = myHumidity.readTemperature();
+  //packet = {myHumidity.readTemperature(), myHumidity.readHumidity(), 33.33, 44.44};
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);
   Serial.print("Humidity = ");
   Serial.println(packet.sensor2);
   packet.sensorID = 2;
+  Serial.print("SensorID = ");
+  Serial.println(packet.sensorID);
 
 }
 

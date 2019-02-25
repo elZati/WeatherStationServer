@@ -166,7 +166,6 @@ bool fetchSensor2(void) {
 	if ( timeout )
 	{
 		printf("Failed, response timed out.\n");
-		radio.stopListening();
 		//radio.begin();
 		return false;
 	}

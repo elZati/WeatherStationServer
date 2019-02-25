@@ -113,7 +113,7 @@ void setup() {
   interrupts();
 
   Serial.println("READY.");
-  radio.powerDown();
+  //radio.powerDown();
   //while(1);
 }
 
@@ -137,10 +137,10 @@ if (watchdogActivated)
       // Reset the number of sleep iterations.
       sleepIterations = 0;
       // Log the sensor data (waking the CC3000, etc. as needed)
-    radio.powerUp();
+    //radio.powerUp();
     delay(5);
     sendSensordata2(500,20);
-    radio.powerDown();
+    //radio.powerDown();
     }
 }
 

@@ -151,6 +151,7 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 bool fetchSensor2(void) {
 	SensorPayload buffer;
 	radio.openReadingPipe(1,pipes[1]);
+	radio.openWritingPipe(pipes[1]);
 
 	// Wait here until we get a response, or timeout (250ms)
 	unsigned long started_waiting_at = millis();
@@ -162,7 +163,7 @@ bool fetchSensor2(void) {
 
 	if ( timeout )
 	{
-		//printf("Failed, response timed out.\n");
+		printf("Failed, response timed out.\n");
 		radio.stopListening();
 		//radio.begin();
 		return false;

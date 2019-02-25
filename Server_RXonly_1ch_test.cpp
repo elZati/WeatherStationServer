@@ -177,7 +177,7 @@ bool fetchSensor2(void) {
 				
 		radio.read( &buffer, sizeof(SensorPayload) );
 		
-		printf("Received sensorID: %4i \n",buffer.sensorID);
+		printf("Received sensorID: %4.1i \n",buffer.sensorID);
 			
 		if(buffer.sensorID == 0)
 		{

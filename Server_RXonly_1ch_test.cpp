@@ -152,6 +152,8 @@ bool fetchSensor2(void) {
 	SensorPayload buffer;
 	radio.openReadingPipe(1,pipes[1]);
 	radio.openWritingPipe(pipes[1]);
+	radio.stopListening();
+	radio.startListening();
 
 	// Wait here until we get a response, or timeout (250ms)
 	unsigned long started_waiting_at = millis();

@@ -127,6 +127,8 @@ void loop() {
 // bool ok = sendSensordata();
 //}
 
+watchdogActivated = true;
+
 if (watchdogActivated)
   {
     watchdogActivated = false;
@@ -142,9 +144,12 @@ if (watchdogActivated)
     sendSensordata2(500,20);
     //radio.powerDown();
     }
+
+delay(1000);
+
 }
 
-sleep();
+//sleep();
 
 } // Loop
 

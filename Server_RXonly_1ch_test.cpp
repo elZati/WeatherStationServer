@@ -25,7 +25,7 @@ using namespace std;
 RF24 radio(22,0);
 
 struct SensorPayload {
-	int sensorID;
+	float sensorID;
 	float sensor1;
 	float sensor2;
 	float sensor3;
@@ -177,7 +177,7 @@ bool fetchSensor2(void) {
 				
 		radio.read( &buffer, sizeof(SensorPayload) );
 		
-		printf("Received sensorID: %4.1i \n",buffer.sensorID);
+		printf("Received sensorID: %4.1f \n",buffer.sensorID);
 			
 		if(buffer.sensorID == 0)
 		{

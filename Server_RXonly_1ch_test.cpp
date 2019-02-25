@@ -128,7 +128,7 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		printNodes();	
 		uploadData();
-		sleep(1);
+		sleep(5);
 		
 
 	} // forever loop
@@ -162,7 +162,7 @@ bool fetchSensor2(void) {
 				
 		radio.read( &buffer, sizeof(SensorPayload) );
 		
-		printf("Received sensorID: %4.1f \n",buffer.sensorID);
+		//printf("Received sensorID: %4.1f \n",buffer.sensorID);
 			
 		if(buffer.sensorID == 0)
 		{

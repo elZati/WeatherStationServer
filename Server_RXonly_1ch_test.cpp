@@ -177,6 +177,8 @@ bool fetchSensor2(void) {
 		// Grab the response, compare, and send to debugging spew
 				
 		radio.read( &buffer, sizeof(SensorPayload) );
+		
+		printf("Received sensorID: %4.1f \n",buffer.sensorID);
 			
 		if(buffer.sensorID == 0)
 		{

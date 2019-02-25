@@ -123,7 +123,6 @@ cout << "0" << ltm->tm_min << ":";
 	{
 		checkNodes();
 		fetchSensor2();
-		sleep(5);
 		printNodes();	
 		uploadData();
 		

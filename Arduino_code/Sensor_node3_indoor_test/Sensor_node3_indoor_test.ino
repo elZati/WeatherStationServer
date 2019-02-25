@@ -48,7 +48,7 @@ int sleepIterations = 0;
 volatile bool watchdogActivated = false;
 
 struct sensorPayload {
-  int sensorID;
+  float sensorID;
   float sensor1;
   float sensor2;
   float sensor3;

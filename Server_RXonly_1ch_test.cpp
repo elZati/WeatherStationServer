@@ -122,9 +122,13 @@ cout << "0" << ltm->tm_min << ":";
 	while (1)
 	{
 		checkNodes();
-		fetchSensor2();
+		
+		if(radio.available()){
+			fetchSensor2();
+		}
 		printNodes();	
 		uploadData();
+		sleep(1);
 		
 
 	} // forever loop
@@ -151,26 +155,8 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 }
 
 bool fetchSensor2(void) {
-	SensorPayload buffer;
-
-
-	// Wait here until we get a response, or timeout (250ms)
-	unsigned long started_waiting_at = millis();
-	bool timeout = false;
-	while ( ! radio.available() && ! timeout ) {
-				if (millis() - started_waiting_at > NODE_TIMEOUT )
-					timeout = true;
-	}
-
-	if ( timeout )
-	{
-		printf("Failed, response timed out.\n");
-		//radio.begin();
-		return false;
-	}
 	
-	else
-	{
+	SensorPayload buffer;
 
 		// Grab the response, compare, and send to debugging spew
 				
@@ -199,7 +185,7 @@ bool fetchSensor2(void) {
 		}
 
 		return true;
-	}
+	
 	
 }
 

@@ -128,7 +128,7 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		printNodes();	
 		uploadData();
-		sleep(0.5);
+		sleep(1);
 		if(radio.rxFifoFull ()){
 			printf("RX FIFO full! \n");
 		}
@@ -188,6 +188,10 @@ bool fetchSensor2(void) {
 			SensorNode3 = buffer;
 			last_seenSensor3 = millis();
 			S3 = time(0);
+		}
+		
+		while(radio.available()){
+			radio.read( &buffer, sizeof(SensorPayload) );
 		}
 
 		return true;

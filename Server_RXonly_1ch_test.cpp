@@ -464,7 +464,7 @@ void checkNodes(void){
 	SensorNode1.sensor2 = 0;
 	SensorNode1.sensor3 = 0;
 	printf("********************* NODE1 DEAD ************************************ \n");
-		if(SensorNode1.sensor1 == 0 && SensorNode.sensor2 == 0){
+		if(SensorNode1.sensor1 == 0 && SensorNode1.sensor2 == 0){
 		printf("SensorNode1 reset to zero values!");
 		while(1){}
 		}

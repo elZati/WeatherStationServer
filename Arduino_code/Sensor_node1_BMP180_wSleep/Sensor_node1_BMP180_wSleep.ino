@@ -223,7 +223,7 @@ void poll_sensors(){
   Serial.print("Humidity = ");
   Serial.println(packet.sensor2);
 
-  packet.sensorID = 1;
+  packet.sensorID = 0;
   Serial.print("SensorID = ");
   Serial.println(packet.sensorID);
 

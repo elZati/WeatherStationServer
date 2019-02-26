@@ -128,7 +128,7 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		printNodes();	
 		uploadData();
-		sleep(5);
+		sleep(1);
 		
 
 	} // forever loop

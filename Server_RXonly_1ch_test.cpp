@@ -128,7 +128,7 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		printNodes();	
 		uploadData();
-		sleep(0.25);
+		sleep(0.5);
 		if(radio.rxFifoFull ()){
 			printf("RX FIFO full! \n");
 		}

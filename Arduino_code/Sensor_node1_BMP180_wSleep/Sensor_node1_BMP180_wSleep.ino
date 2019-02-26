@@ -1,31 +1,22 @@
-
-/*
-* Getting Started example sketch for nRF24L01+ radios
-* This is a very basic example of how to send data from one node to another
-* Updated: Dec 2014 by TMRh20
-*/
-
 #include <SPI.h>
 #include "RF24.h"
 #include "printf.h"
 #include <Wire.h> //I2C needed for sensors
 #include "HTU21D.h" //Humidity sensor
+#include <Adafruit_BMP085.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
 
-
-
+Adafruit_BMP085 bmp;
 HTU21D myHumidity; //Create an instance of the humidity sensor
 
 #define LOGGING_FREQ_SECONDS 8 // Seconds to wait before a new sensor reading is logged.
 #define MAX_SLEEP_ITERATIONS   LOGGING_FREQ_SECONDS / 8  // Number of times to sleep (for 8 seconds) before
                                                          // a sensor reading is taken and sent to the server.
                                                          // Don't change this unless you also change the 
-// watchdog timer configuration.
 
 unsigned long timer = millis();
-
 
 /****************** User Config ***************************/
 /***      Set this radio as radio number 0 or 1         ***/
@@ -35,17 +26,18 @@ bool radioNumber = 1;
 RF24 radio(7,8);
 /**********************************************************/
 
-byte addresses[][6] = {"1Node","2Node","3node","4node"};
+byte addresses[][6] = {"1Node","2Node"};
 
 // Used to control whether this node is sending or receiving
 bool role = 0;
 volatile bool radioReceived = false;
+
+volatile bool watchdogActivated = false;
+int sleepIterations = 0;
+
 int initialize_code = 12345;
 int receive_init = 0;
 float sensor_val = 23.5;
-
-int sleepIterations = 0;
-volatile bool watchdogActivated = false;
 
 struct sensorPayload {
   float sensorID;
@@ -54,8 +46,8 @@ struct sensorPayload {
   float sensor3;
   float sensor4;
 };
-sensorPayload packet;
 
+sensorPayload packet;
 
 ISR(WDT_vect)
 {
@@ -67,8 +59,11 @@ ISR(WDT_vect)
 void setup() {
   Serial.begin(57600);
   randomSeed(analogRead(0));
-  packet = {random(10, 20), 22.22, 33.33, 44.44};
-
+  //Configure the pressure sensor
+    if (!bmp.begin()) {
+  Serial.println("Could not find a valid BMP085 sensor, check wiring!");
+  while (1) {}
+  }
   //Configure the humidity sensor
   myHumidity.begin();
   
@@ -78,17 +73,13 @@ void setup() {
   // Set the PA Level low to prevent power supply related issues since this is a
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_LOW);
-  //radio.setAutoAck(1);
-  //radio.enableDynamicPayloads();
   radio.setDataRate(RF24_250KBPS);
-  radio.setRetries(15,15);
-
-  
+   radio.setRetries(15,15);
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[1]);
     radio.openReadingPipe(1,addresses[1]);
-
+  
   // Start the radio listening for data
   radio.startListening();
   delay(1000);
@@ -113,19 +104,18 @@ void setup() {
 
   Serial.println("READY.");
   radio.powerDown();
-  //while(1);
 }
 
 void loop() {
   
 /****************** Sensor Node Role ***************************/
+//sleepNow();
 
 //if(radio.available())
 //{
 // poll_sensors();
 // bool ok = sendSensordata();
 //}
-
 if (watchdogActivated)
   {
     watchdogActivated = false;
@@ -145,7 +135,10 @@ if (watchdogActivated)
 
 sleep();
 
+
+
 } // Loop
+
 
 void sleep()
 {
@@ -185,7 +178,7 @@ bool sendSensordata2(int delayTime, int tryCount){
       Serial.println("Write FAILED.");
      }
      
-    delay(delayTime);
+    delay(delayTime+random(100, 300));
     att_counter++;
     if(att_counter > tryCount){
       max_attempts = true;
@@ -215,23 +208,22 @@ bool sendSensordata(){
       return false;
      }
    //}
-
-
 }
 
 void poll_sensors(){
 
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
-
   packet.sensor2 = myHumidity.readHumidity();
   packet.sensor1 = myHumidity.readTemperature();
-  //packet = {myHumidity.readTemperature(), myHumidity.readHumidity(), 33.33, 44.44};
+  packet.sensor3 = (bmp.readPressure())/100;
+
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);
+  Serial.print("Pressure = ");
+  Serial.println(packet.sensor3);
   Serial.print("Humidity = ");
   Serial.println(packet.sensor2);
-  packet.sensorID = 2;
+
+  packet.sensorID = 1;
   Serial.print("SensorID = ");
   Serial.println(packet.sensorID);
 

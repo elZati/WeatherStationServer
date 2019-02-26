@@ -367,6 +367,11 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 	
 	retPressure(pressBuffer1, SensorNode1.sensor3);
 	
+	if(tempBuffer1 == 0 && tempBuffer2 == 0){
+		printf("Tried to upload zero values!");
+		while(1){}
+	}
+	
 	char str[200];
 	stpcpy(str,"http://www.rxtx-designs.com/saa/upload_values.php?tempin=");
 	strcat(str,tempBuffer2);	

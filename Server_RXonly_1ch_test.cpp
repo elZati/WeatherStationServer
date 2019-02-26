@@ -129,6 +129,9 @@ cout << "0" << ltm->tm_min << ":";
 		printNodes();	
 		uploadData();
 		sleep(1);
+		if(rxFifoFull ()){
+			printf("RX FIFO full! \n");
+		}
 		
 
 	} // forever loop
@@ -469,8 +472,7 @@ void checkNodes(void){
 	SensorNode1.sensor2 = 0;
 	SensorNode1.sensor3 = 0;
 	printf("********************* NODE1 DEAD ************************************ \n");
-		if(SensorNode1.sensor1 == 0 && SensorNode1.sensor2 == 0){
-		printf("SensorNode1 reset to zero values!");
+	printf("SensorNode1 reset to zero values! \n");
 		while(1){}
 		}
 	}

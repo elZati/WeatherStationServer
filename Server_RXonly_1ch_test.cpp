@@ -162,7 +162,10 @@ bool fetchSensor2(void) {
 				
 		radio.read( &buffer, sizeof(SensorPayload) );
 		
-		//printf("Received sensorID: %4.1f \n",buffer.sensorID);
+		if(buffer.sensor1 == 0 && buffer.sensor2 == 0){
+		printf("Received (buffer) zero values from sensorID: %4.1f \n",buffer.sensorID);
+		while(1){}
+		}
 			
 		if(buffer.sensorID == 0)
 		{
@@ -461,6 +464,10 @@ void checkNodes(void){
 	SensorNode1.sensor2 = 0;
 	SensorNode1.sensor3 = 0;
 	printf("********************* NODE1 DEAD ************************************ \n");
+		if(SensorNode1.sensor1 == 0 && SensorNode.sensor2 == 0){
+		printf("SensorNode1 reset to zero values!");
+		while(1){}
+		}
 	}
 	
 	if (millis()-last_seenSensor2 > NODE_SEEN_DELAY) {

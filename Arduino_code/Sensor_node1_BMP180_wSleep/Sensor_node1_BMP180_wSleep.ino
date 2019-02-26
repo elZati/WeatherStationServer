@@ -145,7 +145,7 @@ void sleep()
   // Set sleep to full power down.  Only external interrupts or 
   // the watchdog timer can wake the CPU!
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-
+  wdt_reset();
   // Turn off the ADC while asleep.
   power_adc_disable();
 

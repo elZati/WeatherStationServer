@@ -186,7 +186,7 @@ bool sendSensordata2(int delayTime, int tryCount){
       Serial.println("Write FAILED.");
      }
      
-    delay(delayTime);
+    delay(delayTime+random(100, 300));
     att_counter++;
     if(att_counter > tryCount){
       max_attempts = true;
@@ -232,7 +232,7 @@ void poll_sensors(){
   Serial.println(packet.sensor1);
   Serial.print("Humidity = ");
   Serial.println(packet.sensor2);
-  packet.sensorID = 2;
+  packet.sensorID = 1;
   Serial.print("SensorID = ");
   Serial.println(packet.sensorID);
 

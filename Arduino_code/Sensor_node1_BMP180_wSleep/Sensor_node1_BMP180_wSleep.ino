@@ -11,7 +11,7 @@
 Adafruit_BMP085 bmp;
 HTU21D myHumidity; //Create an instance of the humidity sensor
 
-#define LOGGING_FREQ_SECONDS 8 // Seconds to wait before a new sensor reading is logged.
+#define LOGGING_FREQ_SECONDS 24 // Seconds to wait before a new sensor reading is logged.
 #define MAX_SLEEP_ITERATIONS   LOGGING_FREQ_SECONDS / 8  // Number of times to sleep (for 8 seconds) before
                                                          // a sensor reading is taken and sent to the server.
                                                          // Don't change this unless you also change the 
@@ -128,7 +128,7 @@ if (watchdogActivated)
       // Log the sensor data (waking the CC3000, etc. as needed)
     radio.powerUp();
     delay(5);
-    sendSensordata2(500,20);
+    sendSensordata2(500,1);
     radio.powerDown();
     }
 }
@@ -180,7 +180,7 @@ bool sendSensordata2(int delayTime, int tryCount){
      
     delay(delayTime+random(100, 300));
     att_counter++;
-    if(att_counter > tryCount){
+    if(att_counter >= tryCount){
       max_attempts = true;
       Serial.print("Maximum attempts to TX exceeded!");
       return false;

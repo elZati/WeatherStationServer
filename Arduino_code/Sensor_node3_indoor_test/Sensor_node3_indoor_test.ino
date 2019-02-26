@@ -138,7 +138,7 @@ if (watchdogActivated)
       // Log the sensor data (waking the CC3000, etc. as needed)
     radio.powerUp();
     delay(5);
-    sendSensordata2(500,20);
+    sendSensordata2(500,1);
     radio.powerDown();
     }
 }
@@ -188,7 +188,7 @@ bool sendSensordata2(int delayTime, int tryCount){
      
     delay(delayTime);
     att_counter++;
-    if(att_counter > tryCount){
+    if(att_counter >= tryCount){
       max_attempts = true;
       Serial.print("Maximum attempts to TX exceeded!");
       return false;

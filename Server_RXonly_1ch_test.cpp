@@ -81,6 +81,7 @@ long last_upload = millis();
 long last_seenSensor1 = millis();
 long last_seenSensor2 = millis();
 long last_seenSensor3 = millis();
+long delta_S3 = millis();
 
 int main(int argc, char** argv){
 	clear();
@@ -267,6 +268,7 @@ bool fetchSensor(int nodeAddress) {
 			}
 			if(nodeAddress == 1)
 			{
+				delta_S3 = millis()-last_seenSensor3;
 				SensorNode3 = buffer;
 				last_seenSensor3 = millis();
 				S3 = time(0);
@@ -307,6 +309,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
 			printf("\n");
+			printf("SensorNode1 last_seen: %4.1ld \n",last_seenSensor1);
 	}
 	
 	if(node2_enable) {
@@ -331,6 +334,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");
+			printf("SensorNode2 last_seen: %4.1ld \n",last_seenSensor2);
 	}
 	
 	if(node3_enable) {
@@ -356,6 +360,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");
 			printf("\n");
 			printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
+			printf("SensorNode3 delta_RX: %4.1ld \n",delta_S3);
 	}
 	last_printout = millis();
 }

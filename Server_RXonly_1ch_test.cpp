@@ -161,8 +161,12 @@ bool fetchSensor2(void) {
 	SensorPayload buffer;
 
 		// Grab the response, compare, and send to debugging spew
-				
+		
+		while(radio.available()){
 		radio.read( &buffer, sizeof(SensorPayload) );
+		}
+		
+		radio.stopListening();
 		
 		if(buffer.sensor1 == 0 && buffer.sensor2 == 0){
 		printf("Received (buffer) zero values from sensorID: %4.1f \n",buffer.sensorID);
@@ -187,11 +191,14 @@ bool fetchSensor2(void) {
 			SensorNode3 = buffer;
 			last_seenSensor3 = millis();
 			S3 = time(0);
+			printf("SensorNode3 last_seen: %4.1f \n",last_seenSensor3);
+		}
+		else {
+			printf("Wrong sensorID received! \n");
 		}
 		
-		while(radio.available()){
-			radio.read( &buffer, sizeof(SensorPayload) );
-		}
+		radio.startListening();
+
 
 		return true;
 	

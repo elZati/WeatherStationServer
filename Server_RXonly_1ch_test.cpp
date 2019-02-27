@@ -82,6 +82,8 @@ long last_seenSensor1 = millis();
 long last_seenSensor2 = millis();
 long last_seenSensor3 = millis();
 long delta_S3 = millis();
+long delta_S2 = millis();
+long delta_S1 = millis();
 
 int main(int argc, char** argv){
 	clear();
@@ -176,13 +178,15 @@ bool fetchSensor2(void) {
 			
 		if(buffer.sensorID == 0)
 		{
+			delta_S1 = (millis()-last_seenSensor1)/1000;
 			SensorNode1 = buffer;
 			last_seenSensor1 = millis();
 			S1 = time(0);
-				
+							
 		}
 		if(buffer.sensorID == 2)
 		{
+			delta_S2 = (millis()-last_seenSensor2)/1000;
 			SensorNode2 = buffer;
 			last_seenSensor2 = millis();
 			S2 = time(0);
@@ -311,6 +315,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");
 			printf("\n");
 			printf("SensorNode1 last_seen: %4.1ld \n",last_seenSensor1);
+			printf("SensorNode1 delta_RX: %4.1ld \n",delta_S1);
+			printf("\n");
 	}
 	
 	if(node2_enable) {
@@ -336,6 +342,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");
 			printf("\n");
 			printf("SensorNode2 last_seen: %4.1ld \n",last_seenSensor2);
+			printf("SensorNode2 delta_RX: %4.1ld \n",delta_S2);
+			printf("\n");
 	}
 	
 	if(node3_enable) {

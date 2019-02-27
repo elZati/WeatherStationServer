@@ -201,6 +201,7 @@ bool fetchSensor2(void) {
 		}
 		else {
 			printf("Wrong sensorID received! \n");
+			printf("Received sensorID: %4.1f \n",buffer.sensorID);
 		}
 		
 		radio.startListening();

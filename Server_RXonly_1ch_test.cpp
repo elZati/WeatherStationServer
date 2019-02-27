@@ -14,7 +14,7 @@
 
 #define NODE_RETRY 3 // Number of radio retries per node
 #define NODE_TIMEOUT 300 // Timeout value for radio messaging
-#define NODE_PRINTOUT_DELAY 2000 //Delay between printing node values 
+#define NODE_PRINTOUT_DELAY 5000 //Delay between printing node values 
 #define NODE_UPLOAD_DELAY (1000*60*5) //Delay between uploading node values 
 #define NODE_SEEN_DELAY (1000*60*15) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
@@ -191,7 +191,7 @@ bool fetchSensor2(void) {
 			SensorNode3 = buffer;
 			last_seenSensor3 = millis();
 			S3 = time(0);
-			printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
+			
 		}
 		else {
 			printf("Wrong sensorID received! \n");
@@ -355,6 +355,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");
+			printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
 	}
 	last_printout = millis();
 }

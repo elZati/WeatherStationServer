@@ -191,7 +191,7 @@ bool fetchSensor2(void) {
 			SensorNode3 = buffer;
 			last_seenSensor3 = millis();
 			S3 = time(0);
-			printf("SensorNode3 last_seen: %4.1d \n",last_seenSensor3);
+			printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
 		}
 		else {
 			printf("Wrong sensorID received! \n");

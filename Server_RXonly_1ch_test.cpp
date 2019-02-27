@@ -314,8 +314,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
-			printf("\n");
-			printf("SensorNode1 last_seen: %4.1ld \n",last_seenSensor1);
+			//printf("\n");
+			//printf("SensorNode1 last_seen: %4.1ld \n",last_seenSensor1);
 			printf("SensorNode1 delta_RX: %4.1ld \n",delta_S1);
 			printf("\n");
 	}
@@ -341,8 +341,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("********************************************************* \n");
-			printf("\n");
-			printf("SensorNode2 last_seen: %4.1ld \n",last_seenSensor2);
+			//printf("\n");
+			//printf("SensorNode2 last_seen: %4.1ld \n",last_seenSensor2);
 			printf("SensorNode2 delta_RX: %4.1ld \n",delta_S2);
 			printf("\n");
 	}
@@ -368,8 +368,8 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Temperature: %4.1f \260C\n",SensorNode3.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
 			printf("********************************************************* \n");
-			printf("\n");
-			printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
+			//printf("\n");
+			//printf("SensorNode3 last_seen: %4.1ld \n",last_seenSensor3);
 			printf("SensorNode3 delta_RX: %4.1ld \n",delta_S3);
 	}
 	last_printout = millis();

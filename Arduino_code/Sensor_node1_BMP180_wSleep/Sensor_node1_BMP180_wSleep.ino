@@ -74,7 +74,7 @@ void setup() {
  // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio.setPALevel(RF24_PA_MIN);
   radio.setDataRate(RF24_1MBPS);
-   radio.setRetries(1,1);
+   radio.setRetries(15,15);
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[0]);
@@ -126,9 +126,10 @@ if (watchdogActivated)
       // Reset the number of sleep iterations.
       sleepIterations = 0;
       // Log the sensor data (waking the CC3000, etc. as needed)
+    delay(random(1000,2000));
     radio.powerUp();
     delay(5);
-    sendSensordata2(500,1);
+    sendSensordata2(random(1000,2000),3);
     radio.powerDown();
     }
 }

@@ -139,7 +139,7 @@ if (watchdogActivated)
     delay(random(1000,2000));
     radio.powerUp();
     delay(5);
-    sendSensordata2(500,1);
+    sendSensordata2(random(1000,2000),3);
     radio.powerDown();
     }
 }

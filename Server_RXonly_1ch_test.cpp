@@ -110,9 +110,8 @@ cout << "0" << ltm->tm_min << ":";
 
 
 
-	radio.openReadingPipe(1,pipes[1]);
+	radio.openReadingPipe(1,pipes[0]);
 	radio.openWritingPipe(pipes[1]);
-	radio.stopListening();
 	radio.startListening();
     radio.printDetails();
 

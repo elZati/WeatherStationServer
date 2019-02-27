@@ -184,14 +184,14 @@ bool fetchSensor2(void) {
 			S1 = time(0);
 							
 		}
-		if(buffer.sensorID == 2.0)
+		else if(buffer.sensorID == 2.0)
 		{
 			delta_S2 = (millis()-last_seenSensor2)/1000;
 			SensorNode2 = buffer;
 			last_seenSensor2 = millis();
 			S2 = time(0);
 		}
-		if(buffer.sensorID == 1.0)
+		else if(buffer.sensorID == 1.0)
 		{
 			delta_S3 = (millis()-last_seenSensor3)/1000;
 			SensorNode3 = buffer;

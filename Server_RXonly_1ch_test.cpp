@@ -189,6 +189,7 @@ bool fetchSensor2(void) {
 		}
 		if(buffer.sensorID == 1)
 		{
+			delta_S3 = millis()-last_seenSensor3;
 			SensorNode3 = buffer;
 			last_seenSensor3 = millis();
 			S3 = time(0);
@@ -268,7 +269,7 @@ bool fetchSensor(int nodeAddress) {
 			}
 			if(nodeAddress == 1)
 			{
-				delta_S3 = millis()-last_seenSensor3;
+				
 				SensorNode3 = buffer;
 				last_seenSensor3 = millis();
 				S3 = time(0);

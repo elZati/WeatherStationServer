@@ -173,7 +173,7 @@ bool fetchSensor2(void) {
 		
 		if(buffer.sensor1 == 0 && buffer.sensor2 == 0){
 		printf("Received (buffer) zero values from sensorID: %4.1f \n",buffer.sensorID);
-		while(1){}
+		//while(1){}
 		}
 			
 		if(buffer.sensorID == 0.0)
@@ -398,7 +398,7 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 	
 	if(tempBuffer1 == 0 && tempBuffer2 == 0){
 		printf("Tried to upload zero values!");
-		while(1){}
+		//while(1){}
 	}
 	
 	char str[200];

@@ -493,23 +493,26 @@ void retHumidity(char *buff, float value){
 
 void checkNodes(void){
 	
+	long seen_delay = millis()-last_seenSensor1;
+	printf("millis()-last_seenSensor1: %4.1ld \n",seen_delay);
+	
 	if (millis()-last_seenSensor1 > NODE_SEEN_DELAY) {
-	SensorNode1.sensor1 = 0;
-	SensorNode1.sensor2 = 0;
-	SensorNode1.sensor3 = 0;
-	printf("********************* NODE1 DEAD ************************************ \n");
-	printf("SensorNode1 reset to zero values! \n");
-		while(1){}
+		//SensorNode1.sensor1 = 0;
+		//SensorNode1.sensor2 = 0;
+		//SensorNode1.sensor3 = 0;
+		//printf("********************* NODE1 DEAD ************************************ \n");
+		printf("SensorNode1 reset to zero values! \n");
+		//while(1){}
 	}
 	
 	if (millis()-last_seenSensor2 > NODE_SEEN_DELAY) {
-	SensorNode2.sensor1 = 0;
-	SensorNode2.sensor2 = 0;
+	//SensorNode2.sensor1 = 0;
+	//SensorNode2.sensor2 = 0;
 	printf("********************* NODE2 DEAD ************************************ \n");
 	}
 	if (millis()-last_seenSensor3 > NODE_SEEN_DELAY) {
-	SensorNode3.sensor1 = 0;
-	SensorNode3.sensor2 = 0;
+	//SensorNode3.sensor1 = 0;
+	//SensorNode3.sensor2 = 0;
 	printf("********************* NODE3 DEAD ************************************ \n");
 	}
 }

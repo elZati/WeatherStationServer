@@ -502,7 +502,7 @@ void checkNodes(void){
 		//SensorNode1.sensor3 = 0;
 		//printf("********************* NODE1 DEAD ************************************ \n");
 		printf("SensorNode1 reset to zero values! \n");
-		while(1){}
+		//while(1){}
 	}
 	
 	if (millis()-last_seenSensor2 > NODE_SEEN_DELAY) {

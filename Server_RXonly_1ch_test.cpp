@@ -75,15 +75,15 @@ string node3_name = "TEST SENSOR";
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint8_t pipes[][6] = {"1Node","2Node","3node"};
 
-long last_printout = millis();
-long last_upload = millis();
+unsigned long last_printout = millis();
+unsigned long last_upload = millis();
 
-long last_seenSensor1 = millis();
-long last_seenSensor2 = millis();
-long last_seenSensor3 = millis();
-long delta_S3 = millis();
-long delta_S2 = millis();
-long delta_S1 = millis();
+unsigned long last_seenSensor1 = millis();
+unsigned long last_seenSensor2 = millis();
+unsigned long last_seenSensor3 = millis();
+unsigned long delta_S3 = millis();
+unsigned long delta_S2 = millis();
+unsigned long delta_S1 = millis();
 
 int main(int argc, char** argv){
 	clear();
@@ -493,7 +493,7 @@ void retHumidity(char *buff, float value){
 
 void checkNodes(void){
 	
-	long seen_delay = (millis()-last_seenSensor1)/1000;
+	unsigned long seen_delay = (millis()-last_seenSensor1)/1000;
 	printf("millis()-last_seenSensor1: %4.1ld \n",seen_delay);
 	
 	if (millis()-last_seenSensor1 > NODE_SEEN_DELAY) {

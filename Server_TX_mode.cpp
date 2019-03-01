@@ -135,7 +135,7 @@ cout << "0" << ltm->tm_min << ":";
 			printf("Node 3 lost, searching.. \n");
 		}
 		
-		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+3500) || node2_lost){
+		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+4000) || node2_lost){
  		node2_lost = retryFetchSensor(2, 4, 0.25);
 		}
 		
@@ -233,12 +233,14 @@ bool fetchSensor(int nodeAddress) {
 			
 			if(nodeAddress == 0)
 			{
+				delta_S1 = (millis()-last_seenSensor1)/1000;
 				SensorNode1 = buffer;
 				last_seenSensor1 = millis();
 				S1 = time(0);
 			}
 			if(nodeAddress == 2)
 			{
+				delta_S2 = (millis()-last_seenSensor2)/1000;
 				SensorNode2 = buffer;
 				last_seenSensor2 = millis();
 				S2 = time(0);
@@ -310,6 +312,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");
+			printf("SensorNode2 delta_RX: %4.1ld \n",delta_S2);
 	}
 	
 	if(node3_enable) {

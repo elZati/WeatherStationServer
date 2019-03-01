@@ -179,7 +179,7 @@ bool fetchSensor(int nodeAddress) {
 		bool ok = radio.write( &sleep_period, sizeof(int) );
 
 		if (!ok){
-				//printf("Failed to write.\n");
+				printf("Failed to write, NodeAddress %1d \n",nodeAddress);
 				//radio.begin();
 				return false;
 		}
@@ -200,7 +200,7 @@ bool fetchSensor(int nodeAddress) {
 		// Describe the results
 		if ( timeout )
 		{
-			//printf("Failed, response timed out.\n");
+			printf("Failed, response timed out, NodeAddress %1d \n",nodeAddress);
 			radio.stopListening();
 			//radio.begin();
 			return false;

@@ -74,12 +74,12 @@ string node2_name = "INDOOR SENSOR";
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint8_t pipes[][6] = {"1Node","2Node","3node"};
 
-unsigned long last_printout = 0;
-unsigned long last_upload = 0;
+unsigned long last_printout = millis();
+unsigned long last_upload = millis();
 
-unsigned long last_seenSensor1 = 0;
-unsigned long last_seenSensor2 = 0;
-unsigned long last_seenSensor3 = 0;
+unsigned long last_seenSensor1 = millis();
+unsigned long last_seenSensor2 = millis();
+unsigned long last_seenSensor3 = millis();
 
 unsigned long delta_S3 = 0;
 unsigned long delta_S2 = 0;

@@ -169,14 +169,14 @@ bool fetchSensor(int nodeAddress) {
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
 	radio.stopListening();
-	int sleep_period = SLEEP_PERIOD_SENSOR3;
+	float sleep_period = SLEEP_PERIOD_SENSOR3;
 	  
 		// Take the time, and send it.  This will block until complete
 
 		//printf("Now sending...");
 
 
-		bool ok = radio.write( &sleep_period, sizeof(int) );
+		bool ok = radio.write( &sleep_period, sizeof(float) );
 
 		if (!ok){
 				printf("Failed to write, NodeAddress %1d \n",nodeAddress);

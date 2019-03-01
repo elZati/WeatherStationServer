@@ -23,7 +23,7 @@ HTU21D myHumidity; //Create an instance of the humidity sensor
 #define MAX_SLEEP_ITERATIONS   LOGGING_FREQ_SECONDS / 8  // Number of times to sleep (for 8 seconds) before
                                                          // a sensor reading is taken and sent to the server.
                                                          // Don't change this unless you also change the 
-#define NODE_TIMEOUT 3000 // Timeout value for radio messaging
+#define NODE_TIMEOUT 16000 // Timeout value for radio messaging
 
 
 unsigned long timer = millis();
@@ -224,11 +224,13 @@ bool sendSensordata(){
       //if( radio.available()){
                                                                     // Variable for the received timestamp
       //while (radio.available()) {                                   // While there is data ready
-        radio.read( &receive_init, sizeof(int) );             // Get the payload
+      float rec_buffer;
+        radio.read( &rec_buffer, sizeof(float) );             // Get the payload
       //}
 
-      receive_init = sleep_iterations;
-
+      sleep_iterations = rec_buffer;
+//      Serial.print("Received sleep_iterations: ");
+//      Serial.println(receive_init);
       radio.stopListening();                                        // First, stop listening so we can talk   
       bool ok = radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     

@@ -73,7 +73,7 @@ string node3_name = "TEST SENSOR";
 //***********************************
 
 // Radio pipe addresses for the 2 nodes to communicate.
-const uint8_t pipes[][6] = {"1Node","2Node","3node"};
+const uint8_t pipes[][6] = {"1Node","2Node","3node","4node","5node"};
 
 unsigned long last_printout = millis();
 unsigned long last_upload = millis();
@@ -114,6 +114,8 @@ cout << "0" << ltm->tm_min << ":";
 
 
 	radio.openReadingPipe(1,pipes[0]);
+	radio.openReadingPipe(2,pipes[2]);
+	radio.openReadingPipe(3,pipes[3]);
 	radio.openWritingPipe(pipes[1]);
 	radio.startListening();
     radio.printDetails();

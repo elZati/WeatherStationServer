@@ -127,7 +127,7 @@ cout << "0" << ltm->tm_min << ":";
 	{
 		//checkNodes();
 		
-		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+1500) || node3_lost){
+		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+3000) || node3_lost){
  		node3_lost = retryFetchSensor(3, 4, 0.25);
 		}
 		
@@ -135,7 +135,7 @@ cout << "0" << ltm->tm_min << ":";
 			printf("Node 3 lost, searching.. \n");
 		}
 		
-		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+1500) || node2_lost){
+		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+3500) || node2_lost){
  		node2_lost = retryFetchSensor(2, 4, 0.25);
 		}
 		

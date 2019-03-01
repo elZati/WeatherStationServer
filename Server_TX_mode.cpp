@@ -18,7 +18,7 @@
 #define NODE_UPLOAD_DELAY (1000*60*5) //Delay between uploading node values 
 #define NODE_SEEN_DELAY (1000*60*15) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
-#define SLEEP_PERIOD_SENSOR3 2
+#define SLEEP_PERIOD_SENSOR3 3
 
 using namespace std;
 

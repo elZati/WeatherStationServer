@@ -169,6 +169,9 @@ if (watchdogActivated || first_run)
       Serial.print("Waited for: ");
       Serial.print(delta);
       Serial.println(" seconds");
+      if(!ok){
+        sleep_iterations = 0;
+      }
     }
    
     radio.powerDown();
@@ -229,16 +232,20 @@ bool sendSensordata(){
       //}
 
       sleep_iterations = rec_buffer;
-//      Serial.print("Received sleep_iterations: ");
-//      Serial.println(receive_init);
+      Serial.print("Received sleep_iterations: ");
+      Serial.println(rec_buffer);
       radio.stopListening();                                        // First, stop listening so we can talk   
       bool ok = radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
       Serial.println(F("Sent response"));
       if(ok) {
         Serial.println("TX OK.");
+        return true;
+      }else{
+        Serial.println("TX FAILED.");
+        return false;
       }
-      return true;
+      
 
    //}
 

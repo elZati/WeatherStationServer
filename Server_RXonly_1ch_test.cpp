@@ -206,6 +206,9 @@ bool fetchSensor2(void) {
 			printf("Received sensorID: %4.1f \n",buffer.sensorID);
 		}
 		
+		radio.openReadingPipe(1,pipes[0]);
+		radio.openReadingPipe(2,pipes[2]);
+		radio.openReadingPipe(3,pipes[3]);
 		radio.startListening();
 
 

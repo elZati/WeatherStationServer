@@ -19,6 +19,7 @@
 #define NODE_SEEN_DELAY (1000*60*15) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
 #define SLEEP_PERIOD_SENSOR3 3
+#define SLEEP_PERIOD_SENSOR2 1
 
 using namespace std;
 
@@ -86,6 +87,7 @@ unsigned long delta_S2 = 0;
 unsigned long delta_S1 = 0;
 
 bool node3_lost = true;
+bool node2_lost = true;
 
 int main(int argc, char** argv){
 	clear();
@@ -130,6 +132,14 @@ cout << "0" << ltm->tm_min << ":";
 		
 		if(node3_lost){
 			printf("Node 3 lost, searching.. \n");
+		}
+		
+		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+1500) || node2_lost){
+ 		node2_lost = retryFetchSensor(2, 4, 0.25);
+		}
+		
+		if(node2_lost){
+			printf("Node 2 lost, searching.. \n");
 		}
 		//retryFetchSensor(2, 5, 0.1);
 		sleep(1);
@@ -263,7 +273,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode1.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode1.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
 			printf("********************************************************* \n");
@@ -287,7 +297,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode2.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");
@@ -310,7 +320,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			printf("Temperature: %4.1f \302\260C\n",SensorNode3.sensor1);
+			printf("Temperature: %4.1f \260C\n",SensorNode3.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
 			printf("********************************************************* \n");
 			printf("\n");

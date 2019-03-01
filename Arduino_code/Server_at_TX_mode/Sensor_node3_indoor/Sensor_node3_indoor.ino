@@ -165,6 +165,10 @@ if (watchdogActivated || first_run)
     {
       poll_sensors();
       bool ok = sendSensordata();
+      unsigned long delta = (millis() - started_waiting_at)/1000;
+      Serial.print("Waited for: ");
+      Serial.print(delta);
+      Serial.println(" seconds");
     }
    
     radio.powerDown();

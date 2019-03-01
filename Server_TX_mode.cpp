@@ -120,7 +120,7 @@ cout << "0" << ltm->tm_min << ":";
 	// forever loop
 	while (1)
 	{
-		checkNodes();
+		//checkNodes();
 		
 		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+2000)){
  		retryFetchSensor(1, 4, 0.25);
@@ -128,7 +128,7 @@ cout << "0" << ltm->tm_min << ":";
 		//retryFetchSensor(2, 5, 0.1);
 		sleep(1);
 		printNodes();	
-		uploadData();
+		//uploadData();
 		
 
 	} // forever loop

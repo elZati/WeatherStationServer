@@ -72,7 +72,7 @@ string node2_name = "INDOOR SENSOR";
 //***********************************
 
 // Radio pipe addresses for the 2 nodes to communicate.
-const uint8_t pipes[][6] = {"1Node","2Node","3node"};
+const uint8_t pipes[][6] = {"1Node","2Node","3node","4node"};
 
 unsigned long last_printout = millis();
 unsigned long last_upload = millis();
@@ -123,7 +123,7 @@ cout << "0" << ltm->tm_min << ":";
 		//checkNodes();
 		
 		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+2000)){
- 		retryFetchSensor(1, 4, 0.25);
+ 		retryFetchSensor(3, 4, 0.25);
 		}
 		//retryFetchSensor(2, 5, 0.1);
 		sleep(1);
@@ -214,7 +214,7 @@ bool fetchSensor(int nodeAddress) {
 				last_seenSensor2 = millis();
 				S2 = time(0);
 			}
-			if(nodeAddress == 1)
+			if(nodeAddress == 3)
 			{
 				delta_S3 = (millis()-last_seenSensor3)/1000;
 				SensorNode3 = buffer;

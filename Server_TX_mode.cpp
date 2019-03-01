@@ -39,7 +39,7 @@ SensorPayload SensorNode3;
 // function declaration
 bool fetchSensor(int nodeAddress);
 void printNodes();
-void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
+bool retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
 void retTemperature(char *buff, float value);
 void retHumidity(char *buff, float value);
@@ -85,6 +85,8 @@ unsigned long delta_S3 = 0;
 unsigned long delta_S2 = 0;
 unsigned long delta_S1 = 0;
 
+bool node3_lost = true;
+
 int main(int argc, char** argv){
 	clear();
 	cout << "Weather Station Server for RPi" << endl;
@@ -122,8 +124,8 @@ cout << "0" << ltm->tm_min << ":";
 	{
 		//checkNodes();
 		
-		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+1500)){
- 		retryFetchSensor(3, 4, 0.25);
+		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+1500) || node3_lost){
+ 		node3_lost = retryFetchSensor(3, 4, 0.25);
 		}
 		//retryFetchSensor(2, 5, 0.1);
 		sleep(1);
@@ -137,7 +139,7 @@ cout << "0" << ltm->tm_min << ":";
 
   return 0;
 }
-void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
+bool retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
 //printf("Fetching.. %1d \n",nodeAddress);
   bool max_attempts = false;
   int att_counter = 0;
@@ -147,10 +149,13 @@ void retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
     sleep(delayTime);
     ok = fetchSensor(nodeAddress);
     att_counter++;
+	
     if(att_counter > max_attemptCount){
       max_attempts = true;
       printf("Max attempts exceeded for sensor %1d \n",nodeAddress);
+	  return true;
     }
+	return false;
   }
 }
 

@@ -20,7 +20,7 @@
 #define clear() printf("\033[H\033[J")
 #define SLEEP_PERIOD_SENSOR3 3
 #define SLEEP_PERIOD_SENSOR2 1
-#define SLEEP_PERIOD_SENSOR2 2
+#define SLEEP_PERIOD_SENSOR1 2
 
 using namespace std;
 

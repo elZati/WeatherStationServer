@@ -122,7 +122,7 @@ cout << "0" << ltm->tm_min << ":";
 	{
 		//checkNodes();
 		
-		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+2000)){
+		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+1500)){
  		retryFetchSensor(3, 4, 0.25);
 		}
 		//retryFetchSensor(2, 5, 0.1);
@@ -177,6 +177,7 @@ bool fetchSensor(int nodeAddress) {
 		// Now, continue listening
 		//printf(" ..OK.\n");
 		radio.startListening();
+		radio.flush_rx();
 
 		// Wait here until we get a response, or timeout (250ms)
 		unsigned long started_waiting_at = millis();
@@ -223,6 +224,8 @@ bool fetchSensor(int nodeAddress) {
 			}
 			radio.stopListening();
 			//radio.begin();
+			radio.flush_rx();
+			
 			return true;
 		}
 	

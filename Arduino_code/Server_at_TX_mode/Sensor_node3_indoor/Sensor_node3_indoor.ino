@@ -11,11 +11,19 @@
 #include <avr/sleep.h>
 #include <Wire.h> //I2C needed for sensors
 #include "HTU21D.h" //Humidity sensor
+#include <avr/sleep.h>
+#include <avr/power.h>
+#include <avr/wdt.h>
 
 
 
 HTU21D myHumidity; //Create an instance of the humidity sensor
 
+#define LOGGING_FREQ_SECONDS 16 // Seconds to wait before a new sensor reading is logged.
+#define MAX_SLEEP_ITERATIONS   LOGGING_FREQ_SECONDS / 8  // Number of times to sleep (for 8 seconds) before
+                                                         // a sensor reading is taken and sent to the server.
+                                                         // Don't change this unless you also change the 
+#define NODE_TIMEOUT 3000 // Timeout value for radio messaging
 
 
 unsigned long timer = millis();
@@ -30,13 +38,17 @@ RF24 radio(7,8);
 /**********************************************************/
 
 byte addresses[][6] = {"1Node","2Node","3node","4node"};
-
+volatile bool watchdogActivated = false;
 // Used to control whether this node is sending or receiving
 bool role = 0;
 volatile bool radioReceived = false;
 int initialize_code = 12345;
+int sleep_iterations = 0;
 int receive_init = 0;
 float sensor_val = 23.5;
+int sleepIterations = 0;
+
+bool first_run = true;
 
 struct sensorPayload {
   float sensor1;
@@ -45,6 +57,13 @@ struct sensorPayload {
   float sensor4;
 };
 sensorPayload packet;
+
+ISR(WDT_vect)
+{
+  // Set the watchdog activated flag.
+  // Note that you shouldn't do much work inside an interrupt handler.
+  watchdogActivated = true;
+}
 
 void setup() {
   Serial.begin(57600);
@@ -69,15 +88,34 @@ void setup() {
   // Open a writing and reading pipe on each radio, with opposite addresses
 
     radio.openWritingPipe(addresses[1]);
-    radio.openReadingPipe(1,addresses[1]);
+    radio.openReadingPipe(1,addresses[3]);
 
   // Start the radio listening for data
   radio.startListening();
   delay(1000);
   radio.printDetails();
+
+  noInterrupts();
+  
+  // Set the watchdog reset bit in the MCU status register to 0.
+  MCUSR &= ~(1<<WDRF);
+  
+  // Set WDCE and WDE bits in the watchdog control register.
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+
+  // Set watchdog clock prescaler bits to a value of 8 seconds.
+  WDTCSR = (1<<WDP0) | (1<<WDP3);
+  
+  // Enable watchdog as interrupt only (no reset).
+  WDTCSR |= (1<<WDIE);
+  
+  // Enable interrupts again.
   interrupts();
+  
   Serial.println("READY.");
   //while(1);
+
+  radio.powerDown();
 }
 
 void loop() {
@@ -86,15 +124,78 @@ void loop() {
 //sleepNow();
 
  
-if(radio.available())
-{
- poll_sensors();
- bool ok = sendSensordata();
+//if(radio.available())
+//{
+// poll_sensors();
+// bool ok = sendSensordata();
+//}
+
+if (watchdogActivated || first_run)
+  {
+    first_run = false;
+    watchdogActivated = false;
+    // Increase the count of sleep iterations and take a sensor
+    // reading once the max number of iterations has been hit.
+    sleepIterations += 1;
+    if (sleepIterations >= sleep_iterations) {
+      // Reset the number of sleep iterations.
+      sleepIterations = 0;
+      // Log the sensor data (waking the CC3000, etc. as needed)
+    //delay(random(1000,2000));
+    radio.powerUp();
+    delay(5);
+    radio.startListening();
+
+    unsigned long started_waiting_at = millis();
+    bool timeout = false;
+    while ( ! radio.available() && ! timeout ) {
+        if (millis() - started_waiting_at > NODE_TIMEOUT )
+          timeout = true;
+    }
+
+        // Describe the results
+    if ( timeout )
+    {
+      //printf("Failed, response timed out.\n");
+      Serial.println("Failed, reponse timed out.");
+      radio.stopListening();
+      //radio.begin();
+    }
+    else
+    {
+      poll_sensors();
+      bool ok = sendSensordata();
+    }
+   
+    radio.powerDown();
+    }
 }
 
+sleep();
 
 
 } // Loop
+
+void sleep()
+{
+  // Set sleep to full power down.  Only external interrupts or 
+  // the watchdog timer can wake the CPU!
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  wdt_reset();
+
+  // Turn off the ADC while asleep.
+  power_adc_disable();
+
+  // Enable sleep and enter sleep mode.
+  sleep_mode();
+
+  // CPU is now asleep and program execution completely halts!
+  // Once awake, execution will resume at this point.
+  
+  // When awake, disable sleep mode and turn on all devices.
+  sleep_disable();
+  power_all_enable();
+}
 
 void wake ()
 {
@@ -122,17 +223,17 @@ bool sendSensordata(){
         radio.read( &receive_init, sizeof(int) );             // Get the payload
       //}
 
-      if(receive_init == initialize_code)
-     {
+      receive_init = sleep_iterations;
+
       radio.stopListening();                                        // First, stop listening so we can talk   
-      radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
+      bool ok = radio.write( &packet, sizeof(sensorPayload) );              // Send the final one back.      
       radio.startListening();                                       // Now, resume listening so we catch the next packets.     
-      Serial.print(F("Sent response"));
+      Serial.println(F("Sent response"));
+      if(ok) {
+        Serial.println("TX OK.");
+      }
       return true;
-     } else {
-      Serial.println("Wrong init");
-      return false;
-     }
+
    //}
 
 

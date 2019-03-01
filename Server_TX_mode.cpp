@@ -20,6 +20,7 @@
 #define clear() printf("\033[H\033[J")
 #define SLEEP_PERIOD_SENSOR3 3
 #define SLEEP_PERIOD_SENSOR2 1
+#define SLEEP_PERIOD_SENSOR2 2
 
 using namespace std;
 
@@ -179,7 +180,14 @@ bool fetchSensor(int nodeAddress) {
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
 	radio.stopListening();
-	float sleep_period = SLEEP_PERIOD_SENSOR3;
+	if(nodeAddress == 3){
+		float sleep_period = SLEEP_PERIOD_SENSOR3;
+	}else if (nodeAddress == 2){
+		float sleep_period = SLEEP_PERIOD_SENSOR2;
+	}else{
+		float sleep_period = SLEEP_PERIOD_SENSOR1;
+	}
+		
 	  
 		// Take the time, and send it.  This will block until complete
 

@@ -155,8 +155,8 @@ bool retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime) {
       printf("Max attempts exceeded for sensor %1d \n",nodeAddress);
 	  return true;
     }
-	return false;
   }
+  return false;
 }
 
 bool fetchSensor(int nodeAddress) {

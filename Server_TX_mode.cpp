@@ -180,12 +180,13 @@ bool fetchSensor(int nodeAddress) {
 	radio.openWritingPipe(pipes[nodeAddress]);
 	radio.openReadingPipe(1,pipes[1]);
 	radio.stopListening();
+	float sleep_period = 999;
 	if(nodeAddress == 3){
-		float sleep_period = SLEEP_PERIOD_SENSOR3;
+		sleep_period = SLEEP_PERIOD_SENSOR3;
 	}else if (nodeAddress == 2){
-		float sleep_period = SLEEP_PERIOD_SENSOR2;
+		sleep_period = SLEEP_PERIOD_SENSOR2;
 	}else{
-		float sleep_period = SLEEP_PERIOD_SENSOR1;
+		sleep_period = SLEEP_PERIOD_SENSOR1;
 	}
 		
 	  

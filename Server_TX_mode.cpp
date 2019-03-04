@@ -20,7 +20,7 @@
 #define clear() printf("\033[H\033[J")
 #define SLEEP_PERIOD_SENSOR3 3
 #define SLEEP_PERIOD_SENSOR2 1
-#define SLEEP_PERIOD_SENSOR1 2
+#define SLEEP_PERIOD_SENSOR1 6
 
 using namespace std;
 
@@ -89,6 +89,7 @@ unsigned long delta_S1 = 0;
 
 bool node3_lost = true;
 bool node2_lost = true;
+bool node1_lost = true;
 
 int main(int argc, char** argv){
 	clear();
@@ -110,16 +111,16 @@ cout << "0" << ltm->tm_min << ":";
 	radio.begin();
 
   // optionally, increase the delay between retries & # of retries
-	radio.setRetries(15,15);
-	radio.setPALevel(RF24_PA_MIN);
+	radio.setRetries(2,15);
+	radio.setPALevel(RF24_PA_LOW);
 	//radio.setAutoAck(1);
 	//radio.enableDynamicPayloads();
 	radio.setDataRate(RF24_1MBPS);
-
-
-
 	radio.openReadingPipe(1,pipes[1]);
     radio.printDetails();
+	radio.startListening();
+	radio.powerUp();
+	
 	sleep(1);
 	
 	// forever loop
@@ -142,10 +143,19 @@ cout << "0" << ltm->tm_min << ":";
 		if(node2_lost){
 			printf("Node 2 lost, searching.. \n");
 		}
+		
+		if(millis()-last_seenSensor1 >= (SLEEP_PERIOD_SENSOR1*8*1000+1000) || node1_lost){
+ 		node2_lost = retryFetchSensor(0, 4, 0.25);
+		}
+		
+		if(node2_lost){
+			printf("Node 1 lost, searching.. \n");
+		}
+		
 		//retryFetchSensor(2, 5, 0.1);
 		sleep(1);
 		printNodes();	
-		//uploadData();
+		uploadData();
 		
 
 	} // forever loop
@@ -293,7 +303,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 	
 	if(node2_enable) {
 
-			cout << "***************** " << node2_name << "  MESSAGE ************************" << endl;
+			cout << "***************** " << node2_name << " MESSAGE ************************" << endl;
 			
 			tm *ltm = localtime(&S2);
 
@@ -310,14 +320,17 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			// Spew it
 			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
+			printf("SensorNode2 delta_RX: %4.1ld \n",delta_S2);
 			printf("********************************************************* \n");
 			printf("\n");
-			printf("SensorNode2 delta_RX: %4.1ld \n",delta_S2);
+			
+			
+			
 	}
 	
 	if(node3_enable) {
 
-			cout << "***************** " << node3_name << "  MESSAGE ************************" << endl;
+			cout << "***************** " << node3_name << " MESSAGE ************************" << endl;
 			
 
 			tm *ltm = localtime(&S3);
@@ -334,9 +347,9 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			// Spew it
 			printf("Temperature: %4.1f \260C\n",SensorNode3.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
+			printf("SensorNode3 delta_RX: %4.1ld \n",delta_S3);
 			printf("********************************************************* \n");
 			printf("\n");
-			printf("SensorNode3 delta_RX: %4.1ld \n",delta_S3);
 	}
 	
 	last_printout = millis();

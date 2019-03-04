@@ -20,7 +20,7 @@
 #define clear() printf("\033[H\033[J")
 #define SLEEP_PERIOD_SENSOR3 3
 #define SLEEP_PERIOD_SENSOR2 1
-#define SLEEP_PERIOD_SENSOR1 6
+#define SLEEP_PERIOD_SENSOR1 2
 
 using namespace std;
 
@@ -145,10 +145,10 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		
 		if(millis()-last_seenSensor1 >= (SLEEP_PERIOD_SENSOR1*8*1000+1000) || node1_lost){
- 		node2_lost = retryFetchSensor(0, 4, 0.25);
+ 		node1_lost = retryFetchSensor(0, 4, 0.25);
 		}
 		
-		if(node2_lost){
+		if(node1_lost){
 			printf("Node 1 lost, searching.. \n");
 		}
 		

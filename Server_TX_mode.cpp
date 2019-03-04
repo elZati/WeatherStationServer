@@ -297,7 +297,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Temperature: %4.1f \260C\n",SensorNode1.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
-			printf("SensorNode1 delta_RX: %4.1ld \n",delta_S2);
+			printf("SensorNode1 delta_RX: %4.1ld \n",delta_S1);
 			printf("********************************************************* \n");
 			printf("\n");
 	}

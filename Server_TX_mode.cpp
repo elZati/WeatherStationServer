@@ -208,7 +208,7 @@ bool fetchSensor(int nodeAddress) {
 		bool ok = radio.write( &sleep_period, sizeof(float) );
 
 		if (!ok){
-				printf("Failed to write, NodeAddress %1d \n",nodeAddress);
+				//printf("Failed to write, NodeAddress %1d \n",nodeAddress);
 				//radio.begin();
 				return false;
 		}
@@ -229,7 +229,7 @@ bool fetchSensor(int nodeAddress) {
 		// Describe the results
 		if ( timeout )
 		{
-			printf("Failed, response timed out, NodeAddress %1d \n",nodeAddress);
+			//printf("Failed, response timed out, NodeAddress %1d \n",nodeAddress);
 			radio.stopListening();
 			//radio.begin();
 			return false;
@@ -297,6 +297,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("Temperature: %4.1f \260C\n",SensorNode1.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
+			printf("SensorNode1 delta_RX: %4.1ld \n",delta_S2);
 			printf("********************************************************* \n");
 			printf("\n");
 	}

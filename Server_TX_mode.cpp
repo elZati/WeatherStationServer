@@ -59,7 +59,7 @@ int number_of_nodes = 2; //enter amount of active nodes
 
 bool node1_enable = true;
 bool node2_enable = true;
-bool node3_enable = false;
+bool node3_enable = true;
 bool node4_enable = false;
 bool node5_enable = false;
 
@@ -128,13 +128,13 @@ cout << "0" << ltm->tm_min << ":";
 	{
 		//checkNodes();
 		
-/* 		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+3000) || node3_lost){
+		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+3000) || node3_lost){
  		node3_lost = retryFetchSensor(3, 8, 0.25);
 		}
 		
 		if(node3_lost){
 			printf("Node 3 lost, searching.. \n");
-		} */
+		}
 		
 		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+2000) || node2_lost){
  		node2_lost = retryFetchSensor(2, 8, 0.25);

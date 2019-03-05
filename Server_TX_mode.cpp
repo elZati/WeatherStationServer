@@ -18,9 +18,9 @@
 #define NODE_UPLOAD_DELAY (1000*60*5) //Delay between uploading node values 
 #define NODE_SEEN_DELAY (1000*60*15) //Delay between uploading node values 
 #define clear() printf("\033[H\033[J")
-#define SLEEP_PERIOD_SENSOR3 3
-#define SLEEP_PERIOD_SENSOR2 1
-#define SLEEP_PERIOD_SENSOR1 2
+#define SLEEP_PERIOD_SENSOR3 6
+#define SLEEP_PERIOD_SENSOR2 5
+#define SLEEP_PERIOD_SENSOR1 1
 
 using namespace std;
 
@@ -69,7 +69,7 @@ time_t S3;
 
 string  node1_name = "OUTDOOR SENSOR"; //enter name of node
 string node2_name = "INDOOR SENSOR";
- string node3_name = "TEST SENSOR";
+string node3_name = "TEST SENSOR";
 
 //***********************************
 
@@ -112,7 +112,7 @@ cout << "0" << ltm->tm_min << ":";
 
   // optionally, increase the delay between retries & # of retries
 	radio.setRetries(2,15);
-	radio.setPALevel(RF24_PA_LOW);
+	radio.setPALevel(RF24_PA_HIGH);
 	//radio.setAutoAck(1);
 	//radio.enableDynamicPayloads();
 	radio.setDataRate(RF24_1MBPS);
@@ -129,15 +129,15 @@ cout << "0" << ltm->tm_min << ":";
 		//checkNodes();
 		
 		if(millis()-last_seenSensor3 >= (SLEEP_PERIOD_SENSOR3*8*1000+3000) || node3_lost){
- 		node3_lost = retryFetchSensor(3, 4, 0.25);
+ 		node3_lost = retryFetchSensor(3, 8, 0.25);
 		}
 		
 		if(node3_lost){
 			printf("Node 3 lost, searching.. \n");
 		}
 		
-		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+4000) || node2_lost){
- 		node2_lost = retryFetchSensor(2, 4, 0.25);
+		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+2000) || node2_lost){
+ 		node2_lost = retryFetchSensor(2, 8, 0.25);
 		}
 		
 		if(node2_lost){
@@ -145,7 +145,7 @@ cout << "0" << ltm->tm_min << ":";
 		}
 		
 		if(millis()-last_seenSensor1 >= (SLEEP_PERIOD_SENSOR1*8*1000+1000) || node1_lost){
- 		node1_lost = retryFetchSensor(0, 4, 0.25);
+ 		node1_lost = retryFetchSensor(0, 8, 0.25);
 		}
 		
 		if(node1_lost){

@@ -24,6 +24,7 @@ HTU21D myHumidity; //Create an instance of the humidity sensor
                                                          // a sensor reading is taken and sent to the server.
                                                          // Don't change this unless you also change the 
 #define NODE_TIMEOUT 16000 // Timeout value for radio messaging
+#define NODE_TX_TIMEOUT 3000
 
 
 unsigned long timer = millis();
@@ -145,6 +146,11 @@ if (watchdogActivated || first_run)
     radio.powerUp();
     delay(5);
     radio.startListening();
+    Serial.println(" ");
+    Serial.println(" ");
+    Serial.println("***************************************************");
+    Serial.println(" ");
+    poll_sensors();
 
     unsigned long started_waiting_at = millis();
     bool timeout = false;
@@ -163,13 +169,14 @@ if (watchdogActivated || first_run)
     }
     else
     {
-      poll_sensors();
-      bool ok = sendSensordata();
+
+      bool TX_ok = sendSensordata();
+    
       unsigned long delta = (millis() - started_waiting_at)/1000;
       Serial.print("Waited for: ");
       Serial.print(delta);
       Serial.println(" seconds");
-      if(!ok){
+      if(!TX_ok){
         sleep_iterations = 0;
       }
     }
@@ -177,8 +184,10 @@ if (watchdogActivated || first_run)
     radio.powerDown();
     }
 }
-
-sleep();
+    Serial.println(" ");
+    Serial.println("***************************************************");
+    Serial.flush();
+    sleep();
 
 
 } // Loop

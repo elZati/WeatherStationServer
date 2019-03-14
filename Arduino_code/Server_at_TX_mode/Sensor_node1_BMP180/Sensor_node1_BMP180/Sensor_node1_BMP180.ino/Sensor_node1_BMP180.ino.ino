@@ -1,10 +1,3 @@
-
-/*
-* Getting Started example sketch for nRF24L01+ radios
-* This is a very basic example of how to send data from one node to another
-* Updated: Dec 2014 by TMRh20
-*/
-
 #include <SPI.h>
 #include "RF24.h"
 #include "printf.h"
@@ -19,19 +12,19 @@
 Adafruit_BMP085 bmp;
 HTU21D myHumidity; //Create an instance of the humidity sensor
 
-#define LOGGING_FREQ_SECONDS 16 // Seconds to wait before a new sensor reading is logged.
-#define MAX_SLEEP_ITERATIONS   LOGGING_FREQ_SECONDS / 8  // Number of times to sleep (for 8 seconds) before
-                                                         // a sensor reading is taken and sent to the server.
-                                                         // Don't change this unless you also change the 
-#define NODE_TIMEOUT 16000 // Timeout value for radio messaging
-
+#define NODE_TIMEOUT 30000 // Timeout value for radio messaging
+#define LED1 5
+#define LED2 6
+#define DIP4 A0
+#define DIP3 A1
+#define DIP2 A2
+#define DIP1 A3
 
 unsigned long timer = millis();
 
-
-/****************** User Config ***************************/
-/***      Set this radio as radio number 0 or 1         ***/
-bool radioNumber = 1;
+bool debug_mode = false;
+bool PA_high = false;
+bool extra_retry = false;
 
 /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 7 & 8 */
 RF24 radio(7,8);
@@ -39,13 +32,9 @@ RF24 radio(7,8);
 
 byte addresses[][6] = {"1Node","2Node","3node","4node"};
 volatile bool watchdogActivated = false;
-// Used to control whether this node is sending or receiving
-bool role = 0;
 volatile bool radioReceived = false;
-int initialize_code = 12345;
 int sleep_iterations = 0;
 int receive_init = 0;
-float sensor_val = 23.5;
 int sleepIterations = 0;
 
 bool first_run = true;
@@ -67,8 +56,42 @@ ISR(WDT_vect)
 
 void setup() {
   Serial.begin(57600);
-  randomSeed(analogRead(0));
-  packet = {random(10, 20), 22.22, 33.33, 44.44};
+  
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(DIP1, INPUT);
+  pinMode(DIP2, INPUT);
+  pinMode(DIP3, INPUT);
+  pinMode(DIP4, INPUT);
+
+  bool DIP1_state = digitalRead(DIP1);
+  if(DIP1_state){
+    Serial.println("DIP 1 ON: Debug state enabled.");
+    debug_mode = true;
+  }else{
+    Serial.println("DIP 1 OFF: Normal state enabled.");
+  }
+
+  bool DIP2_state = digitalRead(DIP2);
+  if(DIP2_state){
+    Serial.println("DIP 2 ON: Extended retry protocol enabled.");
+    extra_retry = true;
+  }else{
+    Serial.println("DIP 2 OFF: Normal retry operation.");
+  }
+  
+  bool DIP3_state = digitalRead(DIP3);
+    if(DIP3_state){
+    Serial.println("DIP 3 ON");
+  }
+  
+  bool DIP4_state = digitalRead(DIP4);
+    if(DIP4_state){
+    Serial.println("DIP 4 ON: PA mode HIGH.");
+    PA_high = true;
+  }else{
+    Serial.println("DIP 4 OFF: PA mode LOW.");
+  }
 
   if (!bmp.begin()) {
   Serial.println("Could not find a valid BMP085 sensor, check wiring!");
@@ -81,19 +104,23 @@ void setup() {
   //pinMode(2, INPUT);
   radio.begin();
   printf_begin();
-  // Set the PA Level low to prevent power supply related issues since this is a
- // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_LOW);
-  //radio.setAutoAck(1);
-  //radio.enableDynamicPayloads();
+  if(PA_high){
+    radio.setPALevel(RF24_PA_HIGH);
+  }else{
+    radio.setPALevel(RF24_PA_LOW);
+  }
   radio.setDataRate(RF24_250KBPS);
-  radio.setRetries(2,15);
 
+  if(extra_retry){
+    radio.setRetries(15,15);
+  }else{
+    radio.setRetries(2,15);
+  }
   
   // Open a writing and reading pipe on each radio, with opposite addresses
 
-    radio.openWritingPipe(addresses[1]);
-    radio.openReadingPipe(1,addresses[0]);
+  radio.openWritingPipe(addresses[1]);
+  radio.openReadingPipe(1,addresses[0]);
 
   // Start the radio listening for data
   radio.startListening();
@@ -125,16 +152,6 @@ void setup() {
 
 void loop() {
   
-/****************** Sensor Node Role ***************************/
-//sleepNow();
-
- 
-//if(radio.available())
-//{
-// poll_sensors();
-// bool ok = sendSensordata();
-//}
-
 if (watchdogActivated || first_run)
   {
     first_run = false;
@@ -143,10 +160,19 @@ if (watchdogActivated || first_run)
     // reading once the max number of iterations has been hit.
     sleepIterations += 1;
     if (sleepIterations >= sleep_iterations) {
+
+      if(debug_mode){
+        digitalWrite(LED1, HIGH);
+      }
+
+      bool timeout_fail = false;
+      bool TX_fail = false;
+      bool ok = false;
+
+      poll_sensors();
+      
       // Reset the number of sleep iterations.
       sleepIterations = 0;
-      // Log the sensor data (waking the CC3000, etc. as needed)
-    //delay(random(1000,2000));
     radio.powerUp();
     delay(5);
     radio.startListening();
@@ -164,22 +190,57 @@ if (watchdogActivated || first_run)
       //printf("Failed, response timed out.\n");
       Serial.println("Failed, reponse timed out.");
       radio.stopListening();
+      timeout_fail = true;
       //radio.begin();
     }
     else
     {
-      poll_sensors();
-      bool ok = sendSensordata();
+      ok = sendSensordata();
       unsigned long delta = (millis() - started_waiting_at)/1000;
       Serial.print("Waited for: ");
       Serial.print(delta);
       Serial.println(" seconds");
       if(!ok){
         sleep_iterations = 0;
+        TX_fail = true;
       }
     }
    
     radio.powerDown();
+
+    if(timeout_fail && debug_mode){
+      digitalWrite(LED2, HIGH);
+      delay(500);
+      digitalWrite(LED2, LOW);
+      delay(500);
+      digitalWrite(LED2, HIGH);
+      delay(500);
+      digitalWrite(LED2, LOW);
+      delay(500);
+      digitalWrite(LED2, HIGH);
+      delay(500);
+      digitalWrite(LED2, LOW);
+    }
+
+    if(TX_fail && debug_mode){
+      digitalWrite(LED2, HIGH);
+      delay(500);
+      digitalWrite(LED2, LOW);
+      delay(500);
+      digitalWrite(LED2, HIGH);
+      delay(500);
+      digitalWrite(LED2, LOW);
+    }
+
+    if(ok && debug_mode){
+      digitalWrite(LED2, HIGH);
+      delay(250);
+      digitalWrite(LED2, LOW);
+    }
+    
+    if(debug_mode){
+        digitalWrite(LED1, LOW);
+      }
     }
 }
 
@@ -208,24 +269,6 @@ void sleep()
   sleep_disable();
   power_all_enable();
 }
-
-void wake ()
-{
-  sleep_disable ();         // first thing after waking from sleep:
-  detachInterrupt (digitalPinToInterrupt (2));      // stop LOW interrupt on D2
-  radioReceived = true;
-}  // end of wake
-
-void sleepNow ()
-{
-  //Serial.println("Going to Sleep..");
-  set_sleep_mode (SLEEP_MODE_PWR_DOWN);   
-  noInterrupts ();          // make sure we don't get interrupted before we sleep
-  sleep_enable ();          // enables the sleep bit in the mcucr register
-  attachInterrupt (digitalPinToInterrupt (2), wake, FALLING);  // wake up on low level on D2
-  interrupts ();           // interrupts allowed now, next instruction WILL be executed
-  sleep_cpu ();            // here the device is put to sleep
-}  // end of sleepNow
 
 bool sendSensordata(){
 
@@ -258,12 +301,7 @@ bool sendSensordata(){
 }
 
 void poll_sensors(){
-
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
-
-  //packet.sensor2 = myHumidity.readHumidity();
-  //packet.sensor1 = myHumidity.readTemperature();
+  
   packet = {myHumidity.readTemperature(), myHumidity.readHumidity(), (bmp.readPressure())/100, 44.44};
   Serial.print("Temperature = ");
   Serial.println(packet.sensor1);

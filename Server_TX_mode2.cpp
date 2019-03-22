@@ -258,8 +258,7 @@ bool fetchSensor(int nodeAddress) {
 
 void printNodes(){
 	
-if (millis()-last_printout > NODE_PRINTOUT_DELAY)
-{
+if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 	clear();
 	
 	if(node1_enable) {
@@ -286,6 +285,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");				
 			if(node1_lost){
 			printf("Node 1 lost, searching.. \n");
+			}
 			printf("\n");
 		
 	}
@@ -313,6 +313,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");
 			if(node2_lost){
 			printf("Node 2 lost, searching.. \n");
+			}
 			printf("\n");
 			
 			
@@ -342,6 +343,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 			printf("********************************************************* \n");
 			if(node3_lost){
 			printf("Node 3 lost, searching.. \n");
+			}
 			printf("\n");
 	}
 	
@@ -351,6 +353,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY)
 
 	return;
 }
+	
 
 void uploadData(void) {
 	

@@ -433,13 +433,13 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 	last_upload = millis();
 	
 	if(!node1_lost){
-	SLEEP_PERIOD_SENSOR1 = 75;
+	SLEEP_PERIOD_SENSOR1 = 70;
 	}
 	if(!node2_lost){
-	SLEEP_PERIOD_SENSOR2 = 75;
+	SLEEP_PERIOD_SENSOR2 = 70;
 	}
 	if(!node3_lost){
-	SLEEP_PERIOD_SENSOR3 = 75;
+	SLEEP_PERIOD_SENSOR3 = 70;
 	}
 	
 	

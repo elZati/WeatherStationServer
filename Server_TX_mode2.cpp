@@ -431,9 +431,8 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 
 	curl_global_cleanup();
 	last_upload = millis();
-	}
-
-		if(!node1_lost){
+	
+	if(!node1_lost){
 	SLEEP_PERIOD_SENSOR1 = 75;
 	}
 	if(!node2_lost){
@@ -442,6 +441,11 @@ if (millis()-last_upload > NODE_UPLOAD_DELAY) {
 	if(!node3_lost){
 	SLEEP_PERIOD_SENSOR3 = 75;
 	}
+	
+	
+	}
+
+
 	
 	return;
 

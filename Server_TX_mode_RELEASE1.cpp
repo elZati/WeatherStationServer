@@ -281,7 +281,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 			printf("Temperature: %4.1f \260C\n",SensorNode1.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode1.sensor2);
 			printf("Air Pressure: %5.1f hPa\n",SensorNode1.sensor3);
-			printf("SensorNode1 delta_RX: %4.1u \n",delta_S1);
+			printf("SensorNode1 delta_RX: %4.1lu \n",delta_S1);
 			printf("********************************************************* \n");				
 			if(node1_lost){
 			printf("Node 1 lost, searching.. \n");
@@ -309,7 +309,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 			// Spew it
 			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
-			printf("SensorNode2 delta_RX: %4.1u \n",delta_S2);
+			printf("SensorNode2 delta_RX: %4.1lu \n",delta_S2);
 			printf("********************************************************* \n");
 			if(node2_lost){
 			printf("Node 2 lost, searching.. \n");
@@ -339,7 +339,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 			// Spew it
 			printf("Temperature: %4.1f \260C\n",SensorNode3.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode3.sensor2);
-			printf("SensorNode3 delta_RX: %4.1u \n",delta_S3);
+			printf("SensorNode3 delta_RX: %4.1lu \n",delta_S3);
 			printf("********************************************************* \n");
 			if(node3_lost){
 			printf("Node 3 lost, searching.. \n");

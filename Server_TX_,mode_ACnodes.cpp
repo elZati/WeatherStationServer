@@ -131,11 +131,11 @@ cout << "0" << ltm->tm_min << ":";
  		//node3_lost = retryFetchSensor(3, 8, 0.25);
 		//}
 			
-		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000) || node2_lost){
+		if(millis()-last_seenSensor2 >= (SLEEP_PERIOD_SENSOR2*8*1000+1000) || node2_lost){
  		node2_lost = retryFetchSensor(2, 3, 0.25);
 		}
 		
-		if(millis()-last_seenSensor1 >= (SLEEP_PERIOD_SENSOR1*8*1000) || node1_lost){
+		if(millis()-last_seenSensor1 >= (SLEEP_PERIOD_SENSOR1*8*1000+1000) || node1_lost){
  		node1_lost = retryFetchSensor(0, 3, 0.25);
 		}
 	

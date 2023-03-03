@@ -41,6 +41,7 @@ SensorPayload SensorNode3;
 // function declaration
 bool fetchSensor(int nodeAddress);
 void printNodes();
+void writeCSV();
 bool retryFetchSensor(int nodeAddress, int max_attemptCount, int delayTime);
 void uploadData(void);
 void retTemperature(char *buff, float value);
@@ -307,7 +308,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
-			writeCSV;
+			writeCSV();
 			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("SensorNode2 delta_RX: %4.1lu \n",delta_S2);

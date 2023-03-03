@@ -498,6 +498,7 @@ void writeCSV(void){
 	FILE *fpt;
 	fpt=fopen("sensor_readings.csv", "w");
 	fprintf(fpt,"%f, %f, %f,%f,%f\n", 111.111, 1.1, SensorNode2.sensor1,SensorNode2.sensor2, 1108.1);
+	printf("CSV write.. DONE.\n");
 	fclose(fpt);
 }
 	

@@ -307,6 +307,7 @@ if (millis()-last_printout > NODE_PRINTOUT_DELAY){
 			cout << ltm->tm_sec << endl;
 
 			// Spew it
+			writeCSV;
 			printf("Temperature: %4.1f \260C\n",SensorNode2.sensor1);
 			printf("Humidity: %4.1f %%RH\n",SensorNode2.sensor2);
 			printf("SensorNode2 delta_RX: %4.1lu \n",delta_S2);
@@ -491,4 +492,12 @@ void checkNodes(void){
 	printf("********************* NODE2 DEAD ************************************ \n");
 	}
 }
+
+void writeCSV(void){
+	FILE *fpt;
+	fpt=fopen("sensor_readings.csv", "w");
+	fprintf(fpt,"%f, %f, %f,%f,%f\n", 111.111, 1.1, SensorNode2.sensor1,SensorNode2.sensor2, 1108.1);
+	fclose(fpt);
+}
+	
 

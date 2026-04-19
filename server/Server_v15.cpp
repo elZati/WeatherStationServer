@@ -110,7 +110,7 @@ void updateConfigs() {
  * saveForUI(): Writes the most recent data to JSON for the Web interface.
  */
 void saveForUI() {
-    FILE *f = fopen("live_data.json", "w");
+    FILE *f = fopen("../live_data.json", "w");
     if (!f) return;
     fprintf(f, "[\n");
     bool first = true;

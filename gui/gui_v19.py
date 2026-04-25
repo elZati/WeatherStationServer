@@ -13,7 +13,7 @@ import time
 # ==============================================================================
 BATT_CRITICAL = 2.6       # Voltage threshold for RED warning
 UPDATE_RATE_MS = 2000     # GUI refresh interval (2 seconds)
-JSON_FILE = "live_data.json" 
+JSON_FILE = "../live_data.json" 
 
 # Node Settings: Hard-coded colors and friendly names
 SENSOR_NAMES = {1: "Outdoor", 2: "Indoor", 3: "Garden", 4: "Garage", 5: "Attic"}
@@ -23,7 +23,7 @@ SENSOR_COLORS = {1: "#ff7f0e", 2: "#1f77b4", 3: "#2ca02c", 4: "#9467bd", 5: "#d6
 class WeatherApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("GEMINI Control Center v18.1")
+        self.title("SÄÄASEMA v1.0")
         self.geometry("1250x850")
         
         # Force the overall window to the same dark background as the graphs
@@ -129,7 +129,7 @@ class WeatherApp(ctk.CTk):
         for i in range(1, 6):
             val = int(self.sleep_sliders[i].get()) if i in self.sleep_sliders else 1
             settings.append(str(val))
-        with open("config.txt", "w") as f:
+        with open("../config.txt", "w") as f:
             f.write(" ".join(settings))
 
     def create_sensor_card(self, nid):

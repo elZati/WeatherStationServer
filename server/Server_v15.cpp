@@ -76,7 +76,7 @@ void updateConfigs() {
     if (__millis() - last_check < 2000) return;
     last_check = __millis();
     
-    FILE *f = fopen("config.txt", "r");
+    FILE *f = fopen("../config.txt", "r");
     if (f) {
         float new_cmds[6];
         // Read the five expected values from the config file
@@ -131,7 +131,7 @@ void saveForUI() {
  */
 void printNodes() {
     clear();
-    printf("===== GEMINI MONITOR - v13.3 (ALIGNMENT FIX) =====\n");
+    printf("===== SÄÄ-SERVER 1.0 =====\n");
     printf("Listening on Pipes 1-5 | Data Pack: 20-Bytes\n");
     printf("--------------------------------------------------\n");
     for (int i = 1; i <= 5; i++) {

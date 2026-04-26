@@ -25,7 +25,11 @@ PRESSURE_SENTINEL   = 33.33                  # nodes without BMP180 send this va
 SENSOR_NAMES  = {1: "Outdoor", 2: "Indoor", 3: "Garden", 4: "Garage", 5: "Attic"}
 SENSOR_COLORS = {1: "#ff7f0e", 2: "#1f77b4", 3: "#2ca02c", 4: "#9467bd", 5: "#d62728"}
 
-SLEEP_STEPS_MIN = [1, 2, 3, 4, 5, 10, 15, 20, 30, 60]
+SLEEP_STEPS_MIN = [0, 1, 2, 3, 4, 5, 10, 15, 20, 30, 60]
+
+
+def _fmt_sleep(minutes):
+    return "Fastest" if minutes == 0 else f"{minutes} min"
 
 WINDOW_CONFIG = {
     '15min': {'bucket_sec': None, 'maxlen': 450},
@@ -124,14 +128,6 @@ class WeatherApp(ctk.CTk):
             btn.pack(side='left', padx=2)
             self.window_buttons[label] = btn
         self._highlight_window_btn('15min')
-
-        self.timeout_info_lbl = ctk.CTkLabel(self.sidebar, text="Timeout: 15.0 min",
-                                             font=("Arial", 12, "bold"), text_color="white")
-        self.timeout_info_lbl.pack(pady=(15, 0))
-        self.timeout_slider = ctk.CTkSlider(self.sidebar, from_=1, to=60,
-                                            command=self.update_timeout_label)
-        self.timeout_slider.set(15)
-        self.timeout_slider.pack(pady=5)
 
         ctk.CTkLabel(self.sidebar, text="Weather Location", text_color="white").pack(pady=(15, 0))
         loc_frame = ctk.CTkFrame(self.sidebar, fg_color="#1a1a1a")
@@ -236,8 +232,8 @@ class WeatherApp(ctk.CTk):
 
     def create_sensor_card(self, nid, has_pressure):
         """Creates a clickable header tile. Layout differs for pressure-capable nodes."""
-        frame = ctk.CTkFrame(self.header, width=160, fg_color="#252525", corner_radius=10)
-        frame.pack(side="left", padx=5, pady=5, fill="y")
+        frame = ctk.CTkFrame(self.header, fg_color="#252525", corner_radius=10)
+        frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
         frame.configure(cursor="hand2")
 
         color    = SENSOR_COLORS.get(nid, "white")
@@ -305,7 +301,7 @@ class WeatherApp(ctk.CTk):
 
         info_lbl = ctk.CTkLabel(
             container,
-            text=f"{self.sensor_names.get(nid, f'Node {nid}')}: 1 min",
+            text=f"{self.sensor_names.get(nid, f'Node {nid}')}: Fastest",
             font=("Arial", 11), text_color="white"
         )
         info_lbl.pack(pady=(4, 0))
@@ -319,7 +315,7 @@ class WeatherApp(ctk.CTk):
             from_=0, to=len(SLEEP_STEPS_MIN) - 1,
             number_of_steps=len(SLEEP_STEPS_MIN) - 1,
             command=lambda v, l=info_lbl, n=nid: l.configure(
-                text=f"{self.sensor_names.get(n, f'Node {n}')}: {SLEEP_STEPS_MIN[round(float(v))]} min"
+                text=f"{self.sensor_names.get(n, f'Node {n}')}: {_fmt_sleep(SLEEP_STEPS_MIN[round(float(v))])}"
             )
         )
         slider.set(0)
@@ -361,7 +357,7 @@ class WeatherApp(ctk.CTk):
         idx     = round(float(self.sleep_sliders[nid].get()))
         minutes = SLEEP_STEPS_MIN[idx]
         name    = self.sensor_names.get(nid, f"Node {nid}")
-        self.node_widgets[nid]['sidebar_lbl'].configure(text=f"{name}: {minutes} min")
+        self.node_widgets[nid]['sidebar_lbl'].configure(text=f"{name}: {_fmt_sleep(minutes)}")
 
     # --------------------------------------------------------------------------
     # WINDOW / TIMEOUT CONTROLS
@@ -376,8 +372,13 @@ class WeatherApp(ctk.CTk):
         self._highlight_window_btn(window)
         self.redraw_graph()
 
-    def update_timeout_label(self, val):
-        self.timeout_info_lbl.configure(text=f"Timeout: {float(val):.1f} min")
+    def _get_timeout_sec(self):
+        """Timeout = longest active sleep setting × 3, minimum 60 s."""
+        if not self.sleep_sliders:
+            return 180
+        max_min = max(SLEEP_STEPS_MIN[round(float(self.sleep_sliders[nid].get()))]
+                      for nid in self.sleep_sliders)
+        return max(60, max_min * 3 * 60)
 
     # --------------------------------------------------------------------------
     # DATA LAYER
@@ -481,7 +482,7 @@ class WeatherApp(ctk.CTk):
                     data = json.load(f)
 
                 now_dt, now_unix = datetime.now(), time.time()
-                timeout_sec = self.timeout_slider.get() * 60
+                timeout_sec = self._get_timeout_sec()
 
                 for entry in data:
                     nid = entry.get('id')
@@ -535,7 +536,7 @@ class WeatherApp(ctk.CTk):
                         self.node_widgets[nid]['frame'].pack_forget()
                     else:
                         self.active_nodes.add(nid)
-                        self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5)
+                        self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
 
         except Exception as e:
             print(f"Update Error: {e}")

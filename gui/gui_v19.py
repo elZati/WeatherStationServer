@@ -19,6 +19,10 @@ JSON_FILE      = "../live_data.json"
 SENSOR_NAMES  = {1: "Outdoor", 2: "Indoor", 3: "Garden", 4: "Garage", 5: "Attic"}
 SENSOR_COLORS = {1: "#ff7f0e", 2: "#1f77b4", 3: "#2ca02c", 4: "#9467bd", 5: "#d62728"}
 
+# Discrete sleep steps in minutes. Multiplier sent to Arduino = round(min * 60 / 8).
+# Arduino firmware uses int (16-bit on AVR), so 60 min = 450 multiplier is safe.
+SLEEP_STEPS_MIN = [1, 2, 3, 4, 5, 10, 15, 20, 30, 60]
+
 # Time window → bucket width (seconds) and max stored points.
 # '15min' uses raw 2s data (bucket_sec=None); others use averaged buckets.
 WINDOW_CONFIG = {
@@ -36,15 +40,21 @@ class WeatherApp(ctk.CTk):
         self.geometry("1250x850")
         self.configure(fg_color="#1a1a1a")
 
-        self.data_store      = {}
+        self.data_store       = {}
         self.last_packet_time = {}
         self.previous_values  = {}
         self.active_nodes     = set()
+        self.hidden_nodes     = set()   # nodes toggled off the graph by the user
         self.selected_window  = '15min'
+        self.sensor_names     = dict(SENSOR_NAMES)  # mutable copy for renaming
 
         self.setup_ui()
         self.update_loop()
         self.graph_loop()
+
+    # --------------------------------------------------------------------------
+    # UI SETUP
+    # --------------------------------------------------------------------------
 
     def setup_ui(self):
         self.grid_columnconfigure(0, weight=1)
@@ -107,6 +117,129 @@ class WeatherApp(ctk.CTk):
                                       command=self.save_sleep_config)
         self.btn_sync.pack(pady=5)
 
+    # --------------------------------------------------------------------------
+    # SENSOR CARDS
+    # --------------------------------------------------------------------------
+
+    def create_sensor_card(self, nid):
+        """Creates a clickable header tile. Single click toggles graph visibility."""
+        frame = ctk.CTkFrame(self.header, width=150, fg_color="#252525", corner_radius=10)
+        frame.pack(side="left", padx=5, pady=5, fill="y")
+        frame.configure(cursor="hand2")
+
+        color    = SENSOR_COLORS.get(nid, "white")
+        name     = self.sensor_names.get(nid, f"Node {nid}")
+        name_lbl = ctk.CTkLabel(frame, text=name, text_color=color, font=("Arial", 11, "bold"))
+        name_lbl.pack(pady=(2, 0))
+        val_lbl  = ctk.CTkLabel(frame, text="--.-°C", font=("Arial", 20, "bold"), text_color="white")
+        val_lbl.pack()
+        batt_lbl = ctk.CTkLabel(frame, text="Batt: -.--V", font=("Arial", 10), text_color="white")
+        batt_lbl.pack()
+        tx_lbl   = ctk.CTkLabel(frame, text="TX: --", font=("Arial", 10), text_color="#888888")
+        tx_lbl.pack()
+
+        for widget in [frame, name_lbl, val_lbl, batt_lbl, tx_lbl]:
+            widget.bind("<Button-1>", lambda _, n=nid: self.toggle_node_graph(n))
+
+        self.node_widgets[nid] = {
+            'val': val_lbl, 'batt': batt_lbl, 'tx': tx_lbl,
+            'frame': frame, 'name_lbl': name_lbl,
+        }
+        self.create_dynamic_node_slider(nid)
+
+    def toggle_node_graph(self, nid):
+        """Toggles a node's graph lines on/off. Card remains visible either way."""
+        if nid in self.hidden_nodes:
+            self.hidden_nodes.discard(nid)
+            self._set_card_dimmed(nid, False)
+        else:
+            self.hidden_nodes.add(nid)
+            self._set_card_dimmed(nid, True)
+        self.redraw_graph()
+
+    def _set_card_dimmed(self, nid, dimmed):
+        w = self.node_widgets[nid]
+        name_color = "#555555"                        if dimmed else SENSOR_COLORS.get(nid, "white")
+        val_color  = "#666666"                        if dimmed else "white"
+        bg_color   = "#1c1c1c"                        if dimmed else "#252525"
+        w['name_lbl'].configure(text_color=name_color)
+        w['val'].configure(text_color=val_color)
+        w['frame'].configure(fg_color=bg_color)
+
+    # --------------------------------------------------------------------------
+    # PER-NODE SLEEP SLIDERS + RENAME
+    # --------------------------------------------------------------------------
+
+    def create_dynamic_node_slider(self, nid):
+        """Sidebar section for a node: sleep slider (discrete steps) and rename button."""
+        container = ctk.CTkFrame(self.sidebar, fg_color="#252525", corner_radius=8)
+        container.pack(fill="x", pady=5, padx=5)
+
+        info_lbl = ctk.CTkLabel(
+            container,
+            text=f"{self.sensor_names.get(nid, f'Node {nid}')}: 1 min",
+            font=("Arial", 11), text_color="white"
+        )
+        info_lbl.pack(pady=(4, 0))
+
+        ctk.CTkButton(container, text="Rename", width=80, height=22,
+                      fg_color="#444444", hover_color="#555555", font=("Arial", 10),
+                      command=lambda n=nid: self.rename_node(n)).pack(pady=2)
+
+        slider = ctk.CTkSlider(
+            container,
+            from_=0, to=len(SLEEP_STEPS_MIN) - 1,
+            number_of_steps=len(SLEEP_STEPS_MIN) - 1,
+            command=lambda v, l=info_lbl, n=nid: l.configure(
+                text=f"{self.sensor_names.get(n, f'Node {n}')}: {SLEEP_STEPS_MIN[round(float(v))]} min"
+            )
+        )
+        slider.set(0)
+        slider.pack(pady=5, padx=10)
+
+        self.sleep_sliders[nid] = slider
+        self.node_widgets[nid]['sidebar_lbl'] = info_lbl
+
+    def save_sleep_config(self):
+        """Converts discrete slider index → 8s-cycle multiplier and writes to config.txt."""
+        settings = []
+        for i in range(1, 6):
+            if i in self.sleep_sliders:
+                idx        = round(float(self.sleep_sliders[i].get()))
+                minutes    = SLEEP_STEPS_MIN[idx]
+                multiplier = max(1, round(minutes * 60 / 8))
+            else:
+                multiplier = 1
+            settings.append(str(multiplier))
+        with open("../config.txt", "w") as f:
+            f.write(" ".join(settings))
+
+    def rename_node(self, nid):
+        current  = self.sensor_names.get(nid, f"Node {nid}")
+        dialog   = ctk.CTkInputDialog(text=f"New name for '{current}':", title="Rename Sensor")
+        new_name = dialog.get_input()
+        if not new_name or not new_name.strip():
+            return
+        new_name = new_name.strip()
+        self.sensor_names[nid] = new_name
+        self.node_widgets[nid]['name_lbl'].configure(text=new_name)
+        self._update_sidebar_lbl(nid)
+        if nid in self.temp_lines:
+            self.temp_lines[nid].set_label(new_name)
+        self.redraw_graph()
+
+    def _update_sidebar_lbl(self, nid):
+        if nid not in self.sleep_sliders:
+            return
+        idx     = round(float(self.sleep_sliders[nid].get()))
+        minutes = SLEEP_STEPS_MIN[idx]
+        name    = self.sensor_names.get(nid, f"Node {nid}")
+        self.node_widgets[nid]['sidebar_lbl'].configure(text=f"{name}: {minutes} min")
+
+    # --------------------------------------------------------------------------
+    # WINDOW / TIMEOUT CONTROLS
+    # --------------------------------------------------------------------------
+
     def _highlight_window_btn(self, active):
         for label, btn in self.window_buttons.items():
             btn.configure(fg_color="#2ca02c" if label == active else "#2a2a2a")
@@ -119,40 +252,9 @@ class WeatherApp(ctk.CTk):
     def update_timeout_label(self, val):
         self.timeout_info_lbl.configure(text=f"Timeout: {float(val):.1f} min")
 
-    def create_dynamic_node_slider(self, nid):
-        name = SENSOR_NAMES.get(nid, f"Node {nid}")
-        container = ctk.CTkFrame(self.sidebar, fg_color="#252525", corner_radius=8)
-        container.pack(fill="x", pady=5, padx=5)
-        info_lbl = ctk.CTkLabel(container, text=f"{name}: 0.1 min", font=("Arial", 11), text_color="white")
-        info_lbl.pack(pady=2)
-        slider = ctk.CTkSlider(container, from_=1, to=150,
-                               command=lambda v, l=info_lbl, n=name: l.configure(text=f"{n}: {(float(v)*8/60):.1f} min"))
-        slider.set(1)
-        slider.pack(pady=5)
-        self.sleep_sliders[nid] = slider
-
-    def save_sleep_config(self):
-        settings = []
-        for i in range(1, 6):
-            val = int(self.sleep_sliders[i].get()) if i in self.sleep_sliders else 1
-            settings.append(str(val))
-        with open("../config.txt", "w") as f:
-            f.write(" ".join(settings))
-
-    def create_sensor_card(self, nid):
-        frame = ctk.CTkFrame(self.header, width=150, fg_color="#252525", corner_radius=10)
-        frame.pack(side="left", padx=5, pady=5, fill="y")
-        color = SENSOR_COLORS.get(nid, "white")
-        ctk.CTkLabel(frame, text=SENSOR_NAMES.get(nid, f"Node {nid}"),
-                     text_color=color, font=("Arial", 11, "bold")).pack(pady=(2, 0))
-        val_lbl  = ctk.CTkLabel(frame, text="--.-°C", font=("Arial", 20, "bold"), text_color="white")
-        val_lbl.pack()
-        batt_lbl = ctk.CTkLabel(frame, text="Batt: -.--V", font=("Arial", 10), text_color="white")
-        batt_lbl.pack()
-        tx_lbl   = ctk.CTkLabel(frame, text="TX: --", font=("Arial", 10), text_color="#888888")
-        tx_lbl.pack()
-        self.node_widgets[nid] = {'val': val_lbl, 'batt': batt_lbl, 'tx': tx_lbl, 'frame': frame}
-        self.create_dynamic_node_slider(nid)
+    # --------------------------------------------------------------------------
+    # DATA LAYER
+    # --------------------------------------------------------------------------
 
     def _init_node(self, nid, now_unix, initial_temp):
         raw_maxlen = WINDOW_CONFIG['15min']['maxlen']
@@ -176,7 +278,8 @@ class WeatherApp(ctk.CTk):
         }
         self.create_sensor_card(nid)
         self.temp_lines[nid], = self.ax_t.plot([], [], color=SENSOR_COLORS.get(nid),
-                                                label=SENSOR_NAMES.get(nid), linewidth=1.5)
+                                                label=self.sensor_names.get(nid, f"Node {nid}"),
+                                                linewidth=1.5)
         self.hum_lines[nid],  = self.ax_h.plot([], [], color=SENSOR_COLORS.get(nid), linewidth=1.5)
         self.last_packet_time[nid] = now_unix
         self.previous_values[nid]  = initial_temp
@@ -207,6 +310,10 @@ class WeatherApp(ctk.CTk):
             return list(s['t']), list(s['temp']), list(s['hum'])
         b = self.data_store[nid]['buckets'][self.selected_window]
         return list(b['t']), list(b['temp']), list(b['hum'])
+
+    # --------------------------------------------------------------------------
+    # LOOPS
+    # --------------------------------------------------------------------------
 
     def update_loop(self):
         """Reads sensor JSON and refreshes UI cards every 2 seconds. No graph redraws here."""
@@ -260,11 +367,11 @@ class WeatherApp(ctk.CTk):
         self.after(UPDATE_RATE_MS, self.update_loop)
 
     def redraw_graph(self):
-        """Redraws Matplotlib canvas from the appropriate data store for the selected window."""
+        """Redraws Matplotlib canvas. Skips nodes that are timed out or toggled off."""
         visible_temps, visible_hums = [], []
 
         for nid in list(self.data_store.keys()):
-            if nid not in self.active_nodes:
+            if nid not in self.active_nodes or nid in self.hidden_nodes:
                 self.temp_lines[nid].set_data([], [])
                 self.hum_lines[nid].set_data([], [])
                 continue

@@ -117,8 +117,8 @@ void saveForUI() {
     for (int i = 1; i <= 5; i++) {
         if (last_seen[i] > 0) {
             if (!first) fprintf(f, ",\n");
-            fprintf(f, "{\"id\": %d, \"temp\": %.2f, \"hum\": %.2f, \"batt\": %.2f, \"last_seen\": %lld}",
-                    i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor4, (long long)last_seen[i]);
+            fprintf(f, "{\"id\": %d, \"temp\": %.2f, \"hum\": %.2f, \"press\": %.2f, \"batt\": %.2f, \"last_seen\": %lld}",
+                    i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4, (long long)last_seen[i]);
             first = false;
         }
     }

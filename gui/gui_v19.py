@@ -164,12 +164,49 @@ class WeatherApp(ctk.CTk):
     def toggle_sidebar(self):
         if self.sidebar_visible:
             self.sidebar.grid_remove()
-            self.sidebar_btn.configure(text="◀")
             self.sidebar_visible = False
+            self._enter_fullscreen_layout()
         else:
+            self._enter_normal_layout()
             self.sidebar.grid()
-            self.sidebar_btn.configure(text="▶")
             self.sidebar_visible = True
+
+    def _enter_fullscreen_layout(self):
+        """Cards move to a left vertical panel; graph fills the rest of the window."""
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
+        self.header.configure(height=1)
+        self.header.grid_configure(row=0, column=0, rowspan=2, sticky="nsew", padx=0, pady=0)
+        self.canvas.get_tk_widget().grid_configure(row=0, column=1, rowspan=2, sticky="nsew", padx=10, pady=5)
+        self._repack_header("vertical")
+        self.sidebar_btn.configure(text="◀")
+
+    def _enter_normal_layout(self):
+        """Restore cards to the top header bar; graph sits below."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=0)
+        self.header.configure(height=110)
+        self.header.grid_configure(row=0, column=0, rowspan=1, sticky="nsew", padx=0, pady=5)
+        self.canvas.get_tk_widget().grid_configure(row=1, column=0, rowspan=1, sticky="nsew", padx=10, pady=5)
+        self._repack_header("horizontal")
+        self.sidebar_btn.configure(text="▶")
+
+    def _repack_header(self, mode):
+        """Unpack all header children and repack in the given direction."""
+        for widget in self.header.winfo_children():
+            widget.pack_forget()
+        if mode == "vertical":
+            self.sidebar_btn.pack(side="top", padx=4, pady=(5, 2), fill="x")
+            self.wx_frame.pack(side="top", padx=4, pady=2, fill="x")
+            for nid in sorted(self.active_nodes):
+                if nid in self.node_widgets:
+                    self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
+        else:
+            self.wx_frame.pack(side="right", padx=5, pady=5, fill="y")
+            self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
+            for nid in sorted(self.active_nodes):
+                if nid in self.node_widgets:
+                    self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
 
     # --------------------------------------------------------------------------
     # WEATHER FORECAST CARD
@@ -179,6 +216,7 @@ class WeatherApp(ctk.CTk):
         """Fixed forecast card packed to the right end of the header."""
         frame = ctk.CTkFrame(self.header, width=155, fg_color="#2a2a2a", corner_radius=10)
         frame.pack(side="right", padx=5, pady=5, fill="y")
+        self.wx_frame = frame
         ctk.CTkLabel(frame, text="FORECAST", font=("Arial", 10, "bold"),
                      text_color="#888888").pack(pady=(4, 0))
         self.wx_city_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 10, "bold"), text_color="white")
@@ -258,7 +296,10 @@ class WeatherApp(ctk.CTk):
     def create_sensor_card(self, nid, has_pressure):
         """Creates a clickable header tile. Layout differs for pressure-capable nodes."""
         frame = ctk.CTkFrame(self.header, fg_color="#252525", corner_radius=10)
-        frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
+        if not self.sidebar_visible:
+            frame.pack(side="top", padx=4, pady=2, fill="x")
+        else:
+            frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
         frame.configure(cursor="hand2")
 
         color    = SENSOR_COLORS.get(nid, "white")
@@ -561,7 +602,10 @@ class WeatherApp(ctk.CTk):
                         self.node_widgets[nid]['frame'].pack_forget()
                     else:
                         self.active_nodes.add(nid)
-                        self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
+                        if not self.sidebar_visible:
+                            self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
+                        else:
+                            self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
 
         except Exception as e:
             print(f"Update Error: {e}")

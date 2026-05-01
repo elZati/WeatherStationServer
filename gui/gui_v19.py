@@ -27,6 +27,25 @@ SENSOR_COLORS = {1: "#ff7f0e", 2: "#1f77b4", 3: "#2ca02c", 4: "#9467bd", 5: "#d6
 
 SLEEP_STEPS_MIN = [0, 1, 2, 3, 4, 5, 10, 15, 20, 30, 60]
 
+FULLSCREEN_PANEL_W = 240   # width of the right card panel in fullscreen mode
+
+CARD_FONTS_NORMAL = {
+    'name':  ("Arial", 11, "bold"),
+    'val':   ("Arial", 20, "bold"),
+    'batt':  ("Arial", 10),
+    'press': ("Arial", 10),
+    'trend': ("Arial",  9),
+    'tx':    ("Arial", 10),
+}
+CARD_FONTS_FULL = {
+    'name':  ("Arial", 14, "bold"),
+    'val':   ("Arial", 28, "bold"),
+    'batt':  ("Arial", 13),
+    'press': ("Arial", 13),
+    'trend': ("Arial", 12),
+    'tx':    ("Arial", 12),
+}
+
 
 def _fmt_sleep(minutes):
     return "Fastest" if minutes == 0 else f"{minutes} min"
@@ -92,8 +111,8 @@ class WeatherApp(ctk.CTk):
         self.header.grid(row=0, column=0, sticky="nsew", padx=0, pady=5)
         self.node_widgets = {}
 
-        self.create_weather_card()
         self._create_sidebar_toggle()
+        self.create_weather_card()
         self.setup_plotting_engine()
 
         self.sidebar = ctk.CTkScrollableFrame(self, width=300, label_text="SYSTEM SETTINGS",
@@ -172,24 +191,24 @@ class WeatherApp(ctk.CTk):
             self.sidebar_visible = True
 
     def _enter_fullscreen_layout(self):
-        """Cards move to a left vertical panel; graph fills the rest of the window."""
-        self.grid_columnconfigure(0, weight=0)
-        self.grid_columnconfigure(1, weight=1)
+        """Cards panel moves to right column; graph fills full height on the left."""
         self.header.configure(height=1)
-        self.header.grid_configure(row=0, column=0, rowspan=2, sticky="nsew", padx=0, pady=0)
-        self.canvas.get_tk_widget().grid_configure(row=0, column=1, rowspan=2, sticky="nsew", padx=10, pady=5)
+        self.header.grid_configure(row=0, column=1, rowspan=2, sticky="nsew", padx=0, pady=0)
+        self.canvas.get_tk_widget().grid_configure(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=5)
+        self.sidebar_btn.configure(width=FULLSCREEN_PANEL_W, text="◀")
+        self.wx_frame.configure(width=FULLSCREEN_PANEL_W)
+        self._set_all_card_fonts(True)
         self._repack_header("vertical")
-        self.sidebar_btn.configure(text="◀")
 
     def _enter_normal_layout(self):
         """Restore cards to the top header bar; graph sits below."""
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=0)
         self.header.configure(height=110)
         self.header.grid_configure(row=0, column=0, rowspan=1, sticky="nsew", padx=0, pady=5)
         self.canvas.get_tk_widget().grid_configure(row=1, column=0, rowspan=1, sticky="nsew", padx=10, pady=5)
+        self.sidebar_btn.configure(width=44, text="▶")
+        self.wx_frame.configure(width=155)
+        self._set_all_card_fonts(False)
         self._repack_header("horizontal")
-        self.sidebar_btn.configure(text="▶")
 
     def _repack_header(self, mode):
         """Unpack all header children and repack in the given direction."""
@@ -197,13 +216,14 @@ class WeatherApp(ctk.CTk):
             widget.pack_forget()
         if mode == "vertical":
             self.sidebar_btn.pack(side="top", padx=4, pady=(5, 2), fill="x")
-            self.wx_frame.pack(side="top", padx=4, pady=2, fill="x")
             for nid in sorted(self.active_nodes):
                 if nid in self.node_widgets:
                     self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
+            self.wx_frame.pack(side="bottom", padx=4, pady=4, fill="x")
         else:
-            self.wx_frame.pack(side="right", padx=5, pady=5, fill="y")
+            # Toggle packs first → rightmost; weather card is second from right
             self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
+            self.wx_frame.pack(side="right", padx=5, pady=5, fill="y")
             for nid in sorted(self.active_nodes):
                 if nid in self.node_widgets:
                     self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
@@ -302,23 +322,24 @@ class WeatherApp(ctk.CTk):
             frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
         frame.configure(cursor="hand2")
 
+        fonts    = CARD_FONTS_FULL if not self.sidebar_visible else CARD_FONTS_NORMAL
         color    = SENSOR_COLORS.get(nid, "white")
         name     = self.sensor_names.get(nid, f"Node {nid}")
-        name_lbl = ctk.CTkLabel(frame, text=name, text_color=color, font=("Arial", 11, "bold"))
+        name_lbl = ctk.CTkLabel(frame, text=name, text_color=color, font=fonts['name'])
         name_lbl.pack(pady=(2, 0))
-        val_lbl  = ctk.CTkLabel(frame, text="--.-°C", font=("Arial", 20, "bold"), text_color="white")
+        val_lbl  = ctk.CTkLabel(frame, text="--.-°C", font=fonts['val'], text_color="white")
         val_lbl.pack()
-        batt_lbl = ctk.CTkLabel(frame, text="Batt: -.--V", font=("Arial", 10), text_color="white")
+        batt_lbl = ctk.CTkLabel(frame, text="Batt: -.--V", font=fonts['batt'], text_color="white")
         batt_lbl.pack()
 
         press_lbl, trend_lbl = None, None
         if has_pressure:
-            press_lbl = ctk.CTkLabel(frame, text="---- hPa ─", font=("Arial", 10), text_color="white")
+            press_lbl = ctk.CTkLabel(frame, text="---- hPa ─", font=fonts['press'], text_color="white")
             press_lbl.pack()
-            trend_lbl = ctk.CTkLabel(frame, text="Stable", font=("Arial", 9), text_color="#aaaaaa")
+            trend_lbl = ctk.CTkLabel(frame, text="Stable", font=fonts['trend'], text_color="#aaaaaa")
             trend_lbl.pack()
 
-        tx_lbl = ctk.CTkLabel(frame, text="TX: --", font=("Arial", 10), text_color="#888888")
+        tx_lbl = ctk.CTkLabel(frame, text="TX: --", font=fonts['tx'], text_color="#888888")
         tx_lbl.pack(pady=(0, 2))
 
         clickable = [frame, name_lbl, val_lbl, batt_lbl, tx_lbl]
@@ -356,6 +377,18 @@ class WeatherApp(ctk.CTk):
             w['press_lbl'].configure(text_color="#555555" if dimmed else "white")
         if w.get('trend_lbl'):
             w['trend_lbl'].configure(text_color="#555555" if dimmed else "#aaaaaa")
+
+    def _set_all_card_fonts(self, fullscreen):
+        fonts = CARD_FONTS_FULL if fullscreen else CARD_FONTS_NORMAL
+        for w in self.node_widgets.values():
+            w['name_lbl'].configure(font=fonts['name'])
+            w['val'].configure(font=fonts['val'])
+            w['batt'].configure(font=fonts['batt'])
+            w['tx'].configure(font=fonts['tx'])
+            if w.get('press_lbl'):
+                w['press_lbl'].configure(font=fonts['press'])
+            if w.get('trend_lbl'):
+                w['trend_lbl'].configure(font=fonts['trend'])
 
     # --------------------------------------------------------------------------
     # PER-NODE SLEEP SLIDERS + RENAME

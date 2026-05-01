@@ -86,12 +86,14 @@ class WeatherApp(ctk.CTk):
     def setup_ui(self):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
+        self.sidebar_visible = True
 
         self.header = ctk.CTkFrame(self, height=110, fg_color="#1a1a1a", border_width=0, corner_radius=0)
         self.header.grid(row=0, column=0, sticky="nsew", padx=0, pady=5)
         self.node_widgets = {}
 
         self.create_weather_card()
+        self._create_sidebar_toggle()
         self.setup_plotting_engine()
 
         self.sidebar = ctk.CTkScrollableFrame(self, width=300, label_text="SYSTEM SETTINGS",
@@ -145,6 +147,29 @@ class WeatherApp(ctk.CTk):
                                       fg_color="#2ca02c", hover_color="#1e7a1e",
                                       command=self.save_sleep_config)
         self.btn_sync.pack(pady=5)
+
+    # --------------------------------------------------------------------------
+    # SIDEBAR TOGGLE
+    # --------------------------------------------------------------------------
+
+    def _create_sidebar_toggle(self):
+        self.sidebar_btn = ctk.CTkButton(
+            self.header, text="▶", width=44, height=44,
+            fg_color="#2a2a2a", hover_color="#3a3a3a",
+            font=("Arial", 16, "bold"),
+            command=self.toggle_sidebar
+        )
+        self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
+
+    def toggle_sidebar(self):
+        if self.sidebar_visible:
+            self.sidebar.grid_remove()
+            self.sidebar_btn.configure(text="◀")
+            self.sidebar_visible = False
+        else:
+            self.sidebar.grid()
+            self.sidebar_btn.configure(text="▶")
+            self.sidebar_visible = True
 
     # --------------------------------------------------------------------------
     # WEATHER FORECAST CARD

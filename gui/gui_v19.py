@@ -130,9 +130,10 @@ class WeatherApp(ctk.CTk):
         self.ax_t.set_facecolor('#1a1a1a')
         self.ax_h.set_facecolor('#1a1a1a')
         self.ax_t.set_ylabel("Temp (°C)", color="white")
-        self.ax_t.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         self.ax_h.set_ylabel("Hum (%)", color="white")
-        self.ax_h.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        for ax in (self.ax_t, self.ax_h):
+            ax.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=3, maxticks=7, interval_multiples=True))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         self.canvas = FigureCanvasTkAgg(self.fig, self)
         self.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         self.temp_lines, self.hum_lines = {}, {}

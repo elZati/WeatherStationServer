@@ -54,6 +54,21 @@ Returns `OK` on success, HTTP 400 on invalid `node_id`.
 - **Forecast location**: Configurable in settings; stored in `localStorage`.
 - **Auto-refresh**: Latest cards every 60s; full data every 5 min when viewing Today.
 
+## PWA (Progressive Web App)
+
+The site is installable as a home screen app on iPhone via Safari:
+
+1. Open Safari → navigate to the page
+2. Tap the **Share** button → **Add to Home Screen**
+3. A first-time banner in the page guides iOS users through this step
+
+Key files:
+- `manifest.json` — app name, theme color, icons
+- `sw.js` — service worker: pre-caches static assets; API calls use network-first with offline fallback
+- `icon.php` — PHP GD generates the PNG app icon at any requested size (`?size=192`)
+
+The app works offline with the last-fetched sensor data shown until connectivity returns.
+
 ## Deployment
 
 1. Run `migrate.sql` once in cPanel → phpMyAdmin → SQL tab.

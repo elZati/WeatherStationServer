@@ -237,15 +237,15 @@ class WeatherApp(ctk.CTk):
         frame = ctk.CTkFrame(self.header, width=155, fg_color="#2a2a2a", corner_radius=10)
         frame.pack(side="right", padx=5, pady=5, fill="y")
         self.wx_frame = frame
-        ctk.CTkLabel(frame, text="FORECAST", font=("Arial", 10, "bold"),
+        ctk.CTkLabel(frame, text="TOMORROW", font=("Arial", 10, "bold"),
                      text_color="#888888").pack(pady=(4, 0))
         self.wx_city_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 10, "bold"), text_color="white")
         self.wx_city_lbl.pack()
-        self.wx_temp_lbl = ctk.CTkLabel(frame, text="--°C", font=("Arial", 18, "bold"), text_color="white")
+        self.wx_temp_lbl = ctk.CTkLabel(frame, text="--/--°C", font=("Arial", 18, "bold"), text_color="white")
         self.wx_temp_lbl.pack()
         self.wx_desc_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 9), text_color="#aaaaaa")
         self.wx_desc_lbl.pack()
-        self.wx_wind_lbl = ctk.CTkLabel(frame, text="Wind: --", font=("Arial", 9), text_color="#aaaaaa")
+        self.wx_wind_lbl = ctk.CTkLabel(frame, text="Wind max: --", font=("Arial", 9), text_color="#aaaaaa")
         self.wx_wind_lbl.pack()
         self.wx_time_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 8), text_color="#555555")
         self.wx_time_lbl.pack(pady=(0, 4))
@@ -256,9 +256,9 @@ class WeatherApp(ctk.CTk):
         d    = self.weather_data
         desc = WMO_DESCRIPTIONS.get(d.get('code', -1), "Unknown")
         self.wx_city_lbl.configure(text=d.get('city', '--'))
-        self.wx_temp_lbl.configure(text=f"{d.get('temp', 0):.0f}°C")
+        self.wx_temp_lbl.configure(text=f"{d.get('temp_min', 0):.0f}° / {d.get('temp_max', 0):.0f}°C")
         self.wx_desc_lbl.configure(text=desc)
-        self.wx_wind_lbl.configure(text=f"Wind: {d.get('wind', 0):.0f} m/s")
+        self.wx_wind_lbl.configure(text=f"Wind max: {d.get('wind', 0):.0f} m/s")
         self.wx_time_lbl.configure(text=f"Updated {d.get('updated', '--')}")
 
     def _do_weather_fetch(self):
@@ -281,18 +281,19 @@ class WeatherApp(ctk.CTk):
 
             wx_url = (f"https://api.open-meteo.com/v1/forecast"
                       f"?latitude={lat}&longitude={lon}"
-                      f"&current=temperature_2m,weather_code,wind_speed_10m"
-                      f"&timezone=auto")
+                      f"&daily=temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max"
+                      f"&timezone=auto&forecast_days=2")
             with urllib.request.urlopen(wx_url, timeout=10) as resp:
                 wx = json.loads(resp.read())
 
-            cur = wx['current']
+            daily = wx['daily']
             self.weather_data = {
-                'city':    city,
-                'temp':    cur['temperature_2m'],
-                'code':    cur['weather_code'],
-                'wind':    cur['wind_speed_10m'],
-                'updated': datetime.now().strftime('%H:%M'),
+                'city':     city,
+                'temp_max': daily['temperature_2m_max'][1],
+                'temp_min': daily['temperature_2m_min'][1],
+                'code':     daily['weather_code'][1],
+                'wind':     daily['wind_speed_10m_max'][1],
+                'updated':  datetime.now().strftime('%H:%M'),
             }
             self.after(0, self._update_weather_card)
         except Exception as e:

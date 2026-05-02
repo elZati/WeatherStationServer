@@ -1,67 +1,98 @@
-GEMINI Multi-Sensor Control Center: Technical Documentation (v13.3)
-1. System Overview
+# GEMINI Multi-Sensor Control Center: Technical Documentation (v19)
 
-The GEMINI Weather Station is a multi-tier IoT architecture. It collects high-precision environmental data from remote nodes and visualizes it on a unified Raspberry Pi dashboard.
-2. The Data Pipeline
+## 1. System Overview
 
-The journey of a single temperature reading follows three distinct stages:
+The GEMINI Weather Station is a multi-tier IoT architecture. It collects environmental data from up to 5 remote Arduino nodes and visualises it on a Raspberry Pi 7-inch touchscreen (1024×600).
 
-    Arduino Nodes (The Source): Nodes sleep for a defined period (default 8 seconds). Upon waking, they read the HTU21D sensor and the battery voltage. This data is packed into a 64-bit C-Struct and transmitted via the nRF24L01 radio.
+---
 
-    C++ Server (The Bridge):
-    Running on the Raspberry Pi, the server acts as a "Listener." When it receives a packet, it identifies the Node ID and updates a local memory array. Every time a new packet arrives, it overwrites live_data.json with the current state of all active sensors.
+## 2. The Data Pipeline
 
-    Python GUI (The Interface):
-    The GUI reads the live_data.json file every 2000ms. It converts the raw JSON numbers into the visual cards and graphs you see on the screen.
+| Stage | Component | Detail |
+|-------|-----------|--------|
+| Source | Arduino nodes | Sleep via WDT (8s cycles × multiplier). Wake, read HTU21D + optional BMP180, pack into 20-byte struct, transmit via nRF24L01. |
+| Bridge | C++ server (`Server_v15.cpp`) | Receives packets, updates `live_data.json`, sends ACK sleep command back, uploads to remote DB every 5 min. |
+| Interface | Python GUI (`gui/gui_v19.py`) | Reads `live_data.json` every 2s, renders sensor cards and live graphs. |
+| Web | PHP + Chart.js (`saa/`) | Reads remote MySQL DB (`node_readings` table), shows historical charts and per-node cards. |
 
-3. Advanced GUI Logic
-A. The "0s ago" Timer Fix (Change Detection)
+---
 
-In standard GUIs, the "Last Updated" timer resets every time the data is polled. In your system, we use Value-Based Change Detection:
+## 3. GUI Layout
 
-    The GUI keeps a "memory" of the last temperature and battery reading for every node.
+### Normal mode (sidebar visible)
+```
+[Node 1 card] [Node 2 card] … [Forecast card] [▶ toggle]
+[Temperature chart                                      ]
+[Humidity chart                                         ]
+[SYSTEM SETTINGS sidebar (right column)                 ]
+```
 
-    If the GUI reads the JSON and the temperature for Node 1 is exactly the same as 2 seconds ago, it assumes no new radio packet has arrived. The timer continues to count up.
+### Fullscreen mode (sidebar hidden, toggle button pressed)
+```
+[◀ btn          ] ← right panel (240 px wide)
+[3°/12°C · desc ]
+[Node 1 card    ]
+[Node 2 card    ]
+[Temperature + Humidity charts fill full height on left ]
+```
 
-    If the temperature or battery voltage changes by even 0.01, the GUI knows the radio just received a fresh packet. The timer resets to 0.
+The layout switches by moving `self.header` between grid positions and reconfiguring the canvas rowspan. `_repack_header("vertical"|"horizontal")` rebuilds the pack order from scratch on every toggle to avoid drift.
 
-B. Adaptive Y-Axis Scaling
+---
 
-Because your nodes might be in vastly different environments (e.g., a Freezer at -20°C and an Attic at +45°C), the graph cannot use a fixed scale.
+## 4. Key GUI Features
 
-    The GUI iterates through the data buffers of only the active (non-timed-out) sensors.
+### A. Sensor Cards
+- Dynamically created when a node first checks in.
+- Show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend (nodes with BMP180), time since last TX.
+- Click a card to toggle that node's line on/off in the graph.
+- Cards auto-hide after timeout (longest sleep setting × 3, minimum 60s) and reappear when data resumes.
+- Font sizes switch between `CARD_FONTS_NORMAL` and `CARD_FONTS_FULL` on fullscreen toggle.
 
-    It finds the global minimum and maximum across all sensors.
+### B. Pressure Trend
+- Computed from the pressure history buffer over the selected time window.
+- Normalised to hPa per 3 hours (meteorological standard).
+- `▲` rising (> +1.5 hPa/3h), `▼` falling (< −1.5 hPa/3h), `─` stable.
+- Nodes sending the sentinel value `33.33` (no BMP180) show no pressure row.
 
-    It dynamically sets the graph limits with a 5°C "breathing room" buffer above and below the highest and lowest readings.
+### C. Tomorrow's Forecast Card
+- Fetches from Open-Meteo daily API: `temperature_2m_max`, `temperature_2m_min`, `weather_code`, `wind_speed_10m_max` for `forecast_days=2`, index `[1]`.
+- Refreshes every 6 hours in a background thread.
+- In fullscreen mode replaced by a compact single-line strip: `"3° / 12°C · Partly cloudy"` (`wx_compact_lbl`).
+- Location configurable via sidebar entry field; defaults to `Tampere`.
 
-C. Individualized Sleep Management
+### D. Sleep Control
+- Sleep steps (minutes): `[0, 1, 2, 3, 4, 5, 10, 15, 20, 30, 60]`. Step 0 = "Fastest".
+- Per-node sliders in sidebar; "Update Arduino Timing" writes multipliers to `config.txt`.
+- Multiplier = `max(1, round(minutes × 60 / 8))` (8-second WDT cycles).
+- C++ server picks up `config.txt` every 2s and flushes/reloads ACK payloads.
+- Node timeout auto-calculated: `max(60, max_sleep_min × 3 × 60)` seconds.
 
-The GUI now features a dynamic sidebar that grows as sensors check in.
+### E. Graph Windows
+- `15min`: raw deque (up to 450 points).
+- `1h`, `12h`, `24h`: time-bucketed averages (60s, 600s, 1200s buckets).
+- Y-axis auto-scales to the visible data range with 15% padding.
+- Nodes toggled off or timed out are excluded from scaling.
 
-    The Multiplier: Arduinos sleep in increments of 8 seconds (the maximum Watchdog Timer limit).
+### F. Node Renaming
+- Rename button per node in the sidebar opens a `CTkInputDialog`.
+- Name stored in `self.sensor_names` (runtime only; not persisted to disk).
+- Default names: `{1: "Outdoor", 2: "Indoor", 3: "Garden", 4: "Garage", 5: "Attic"}`.
 
-    The Conversion: When you move a slider in the GUI, it calculates the real-world time:
-    Minutes=60Slider Value×8 seconds​
+---
 
-    The Push: When you click "Update Arduino Timing," the GUI writes these multipliers to config.txt. The C++ server picks these up and sends them to the Arduinos via ACK Payloads (data sent back to the Arduino the moment it finishes a transmission).
+## 5. Change Detection (TX Timer)
 
-4. UI Design Philosophy (Seamless Dark Mode)
+The GUI keeps `previous_values[nid]` (last seen temperature). The `last_packet_time` only resets when the temperature value actually changes. This prevents the "TX: 0s ago" timer from resetting every 2-second poll cycle when the node is sleeping and the JSON hasn't changed.
 
-The v13.3 update focuses on a "Glass" or "Seamless" aesthetic:
+---
 
-    Background Unification: The background of the Matplotlib charts, the Sidebar, and the Header are all hard-coded to #1a1a1a.
+## 6. Troubleshooting
 
-    No Dividers: By setting border_width=0, the visual "seams" between the sidebar and the graph area are removed.
-
-    High Contrast: To ensure readability in the dark theme, all primary measurements (Temperature) are forced to Bold White, while secondary info (Battery/TX) uses a subtle grey.
-
-5. Troubleshooting the Data "Chain"
-
-If data stops appearing, check the chain in this order:
-
-    JSON Check: Open a terminal and type cat live_data.json. If it's empty, the C++ server isn't writing data.
-
-    Server Check: Check the C++ terminal for "RX" messages. If none appear, the Arduinos aren't talking to the Pi.
-
-    GUI Timeout: Ensure the Timeout Slider in the sidebar isn't set too low. If a sensor sleeps for 10 minutes but the timeout is set to 5 minutes, the GUI will hide the sensor before it ever wakes up.
+| Symptom | Check |
+|---------|-------|
+| No cards appear | `cat live_data.json` — empty means C++ server isn't writing |
+| Cards keep disappearing | Timeout too short; sleep multiplier × 3 < actual sleep interval |
+| Pressure shows `----` | Node doesn't have BMP180, or is sending sentinel `33.33` |
+| Forecast not updating | Check internet on Pi; location name valid for Open-Meteo geocoding API |
+| Sleep command not reaching node | Check `config.txt` exists; verify ACK payload in serial monitor |

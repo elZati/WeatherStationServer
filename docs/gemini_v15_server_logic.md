@@ -55,8 +55,9 @@ The `while(1)` loop is the engine of the server [cite: 1]:
 4.  **Save/Export:** Triggers `saveForUI()` to update the `live_data.json` file used by the Python dashboard [cite: 1].
 
 ### D. External Integration
-* **`printNodes()`:** Renders a real-time dashboard in the Linux terminal with timestamps and formatted sensor readings [cite: 1].
-* **`uploadData()`:** Every 5 minutes, the server uses `libcurl` to send data from Nodes 1 and 2 to a remote PHP script for cloud logging [cite: 1].
+* **`printNodes()`:** Renders a real-time dashboard in the Linux terminal with timestamps and formatted sensor readings.
+* **`http_get(url)`:** Internal helper that performs a fire-and-forget HTTP GET via `libcurl` with a 10-second timeout. Response body is discarded. `curl_global_init` is called once at program start in `main()`.
+* **`uploadData()`:** Every 5 minutes, iterates over all active nodes (1–5) and uploads each one individually to `upload_values.php` with parameters `node_id`, `temp`, `hum`, `press`, `batt`. Nodes that have never been seen (`last_seen[i] == 0`) are skipped. This replaces the old approach that hardcoded Node 1 as outdoor and Node 2 as indoor.
 
 ---
 

@@ -219,7 +219,7 @@ class WeatherApp(ctk.CTk):
             for nid in sorted(self.active_nodes):
                 if nid in self.node_widgets:
                     self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
-            self.wx_frame.pack(side="bottom", padx=4, pady=4, fill="x")
+            self.wx_frame.pack(side="top", padx=4, pady=4, fill="x")
         else:
             # Toggle packs first → rightmost; weather card is second from right
             self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
@@ -631,12 +631,13 @@ class WeatherApp(ctk.CTk):
                     delta = int(now_unix - self.last_packet_time.get(nid, now_unix))
                     self.node_widgets[nid]['tx'].configure(text=f"TX: {delta}s ago")
                     if delta > timeout_sec:
-                        self.active_nodes.discard(nid)
-                        self.node_widgets[nid]['frame'].pack_forget()
-                    else:
+                        if nid in self.active_nodes:
+                            self.active_nodes.discard(nid)
+                            self.node_widgets[nid]['frame'].pack_forget()
+                    elif nid not in self.active_nodes:
                         self.active_nodes.add(nid)
                         if not self.sidebar_visible:
-                            self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
+                            self._repack_header("vertical")
                         else:
                             self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
 

@@ -216,10 +216,10 @@ class WeatherApp(ctk.CTk):
             widget.pack_forget()
         if mode == "vertical":
             self.sidebar_btn.pack(side="top", padx=4, pady=(5, 2), fill="x")
+            self.wx_compact_lbl.pack(side="top", padx=8, pady=(0, 6))
             for nid in sorted(self.active_nodes):
                 if nid in self.node_widgets:
                     self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
-            self.wx_frame.pack(side="top", padx=4, pady=4, fill="x")
         else:
             # Toggle packs first → rightmost; weather card is second from right
             self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
@@ -250,16 +250,26 @@ class WeatherApp(ctk.CTk):
         self.wx_time_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 8), text_color="#555555")
         self.wx_time_lbl.pack(pady=(0, 4))
 
+        # Compact single-line strip shown in fullscreen mode instead of the full card
+        self.wx_compact_lbl = ctk.CTkLabel(
+            self.header, text="-- / --°C  ·  --",
+            font=("Arial", 12), text_color="#aaaaaa"
+        )
+        # Not packed here — _repack_header handles it based on mode
+
     def _update_weather_card(self):
         if not self.weather_data:
             return
         d    = self.weather_data
         desc = WMO_DESCRIPTIONS.get(d.get('code', -1), "Unknown")
+        t_min = d.get('temp_min', 0)
+        t_max = d.get('temp_max', 0)
         self.wx_city_lbl.configure(text=d.get('city', '--'))
-        self.wx_temp_lbl.configure(text=f"{d.get('temp_min', 0):.0f}° / {d.get('temp_max', 0):.0f}°C")
+        self.wx_temp_lbl.configure(text=f"{t_min:.0f}° / {t_max:.0f}°C")
         self.wx_desc_lbl.configure(text=desc)
         self.wx_wind_lbl.configure(text=f"Wind max: {d.get('wind', 0):.0f} m/s")
         self.wx_time_lbl.configure(text=f"Updated {d.get('updated', '--')}")
+        self.wx_compact_lbl.configure(text=f"{t_min:.0f}° / {t_max:.0f}°C  ·  {desc}")
 
     def _do_weather_fetch(self):
         """Runs in a background thread. Writes to self.weather_data then schedules UI update."""

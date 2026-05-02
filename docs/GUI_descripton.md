@@ -56,7 +56,8 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 - Nodes sending the sentinel value `33.33` (no BMP180) show no pressure row.
 
 ### C. Tomorrow's Forecast Card
-- Fetches from Open-Meteo daily API: `temperature_2m_max`, `temperature_2m_min`, `weather_code`, `wind_speed_10m_max` for `forecast_days=2`, index `[1]`.
+- Fetches from Open-Meteo: `daily` (temp max/min, weather code, wind) + `hourly=cape` for `forecast_days=2`.
+- Also shows lightning potential: next-6-hour max CAPE from `hourly.cape`, displayed as ⚡ Low / ⚡⚡ Moderate / ⚡⚡⚡ High with colour (yellow → orange → red). No label shown when CAPE < 100 J/kg.
 - Refreshes every 6 hours in a background thread.
 - In fullscreen mode replaced by a compact single-line strip: `"3° / 12°C · Partly cloudy"` (`wx_compact_lbl`).
 - Location configurable via sidebar entry field; defaults to `Tampere`.

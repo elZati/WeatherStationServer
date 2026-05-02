@@ -23,6 +23,12 @@
         <button id="settings-toggle" class="icon-btn" title="Settings">&#9881;</button>
     </div>
 
+    <!-- Lightning alert (hidden until real-time strikes detected) -->
+    <div id="lightning-alert" hidden>
+        <span id="lightning-msg"></span>
+        <span id="blitz-status"></span>
+    </div>
+
     <!-- Node cards + forecast -->
     <div id="cards-row">
         <div id="node-cards"></div>
@@ -32,6 +38,7 @@
             <div id="wx-temp" class="wx-temp">-- / --&deg;C</div>
             <div id="wx-desc" class="wx-secondary">--</div>
             <div id="wx-wind" class="wx-secondary">Wind max: --</div>
+            <div id="wx-lightning" class="wx-lightning"></div>
             <div id="wx-updated" class="wx-updated">--</div>
         </div>
     </div>
@@ -73,6 +80,13 @@
                 <button id="save-location" class="primary-btn">Update</button>
             </div>
         </div>
+        <div class="settings-section">
+            <h3>Lightning Alert Radius</h3>
+            <div class="input-row">
+                <input type="text" id="radius-input" placeholder="km" style="width:70px">
+                <button id="save-radius" class="primary-btn">Set</button>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -85,6 +99,7 @@ const DEFAULT_NAMES = { 1:'Outdoor', 2:'Indoor',  3:'Garden',  4:'Garage',  5:'A
 const PRESSURE_SENTINEL = 33.33;
 const BATT_CRITICAL     = 2.6;
 const AUTO_REFRESH_MS   = 60000;
+const BLITZ_SERVERS = ['wss://ws1.blitzortung.org/', 'wss://ws3.blitzortung.org/', 'wss://ws7.blitzortung.org/'];
 
 const WMO = {
     0:'Clear sky',      1:'Mainly clear',   2:'Partly cloudy',  3:'Overcast',
@@ -100,11 +115,15 @@ const WMO = {
 // ============================================================
 // STATE
 // ============================================================
-let nodeNames  = JSON.parse(localStorage.getItem('nodeNames')  || 'null') || {};
-let wxLocation = localStorage.getItem('wxLocation') || 'Tampere';
-let hiddenNodes = new Set();
-let latestData  = {};
+let nodeNames   = JSON.parse(localStorage.getItem('nodeNames') || 'null') || {};
+let wxLocation  = localStorage.getItem('wxLocation') || 'Tampere';
+let alertRadius = parseInt(localStorage.getItem('alertRadius') || '100');
+let hiddenNodes  = new Set();
+let latestData   = {};
 let tempChart, humChart;
+let forecastLat  = null, forecastLon = null;
+let recentStrikes = [];
+let blitzWs = null, blitzWsIdx = 0;
 
 function nodeName(id)  { return nodeNames[id]  || DEFAULT_NAMES[id]  || `Node ${id}`; }
 function nodeColor(id) { return NODE_COLORS[id] || '#aaaaaa'; }
@@ -271,8 +290,11 @@ async function fetchForecast() {
         const wx = await fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
             `&daily=temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max` +
-            `&timezone=auto&forecast_days=2`
+            `&hourly=cape&timezone=auto&forecast_days=2`
         ).then(r => r.json());
+
+        forecastLat = lat; forecastLon = lon;
+        connectBlitzortung();
 
         const d = wx.daily;
         document.getElementById('wx-city').textContent = city;
@@ -281,11 +303,91 @@ async function fetchForecast() {
         document.getElementById('wx-desc').textContent = WMO[d.weather_code[1]] || 'Unknown';
         document.getElementById('wx-wind').textContent =
             `Wind max: ${Math.round(d.wind_speed_10m_max[1])} m/s`;
+
+        const nowIso = new Date().toISOString().slice(0, 13);
+        let hIdx = (wx.hourly?.time || []).findIndex(t => t.slice(0, 13) === nowIso);
+        if (hIdx < 0) hIdx = 0;
+        const capeSample = (wx.hourly?.cape || []).slice(hIdx, hIdx + 6).filter(v => v != null);
+        const maxCape = capeSample.length ? Math.max(...capeSample) : 0;
+        const risk = capeToRisk(maxCape);
+        const wxLightning = document.getElementById('wx-lightning');
+        wxLightning.textContent = risk ? risk.label : '';
+        wxLightning.style.color = risk ? risk.color : '';
+
         document.getElementById('wx-updated').textContent =
             `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } catch (e) {
         console.warn('Forecast error:', e);
     }
+}
+
+// ============================================================
+// LIGHTNING
+// ============================================================
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371, rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearing(lat1, lon1, lat2, lon2) {
+    const rad = Math.PI / 180;
+    const dLon = (lon2 - lon1) * rad;
+    const y = Math.sin(dLon) * Math.cos(lat2 * rad);
+    const x = Math.cos(lat1 * rad) * Math.sin(lat2 * rad) - Math.sin(lat1 * rad) * Math.cos(lat2 * rad) * Math.cos(dLon);
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return dirs[Math.round(((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360 / 45) % 8];
+}
+
+function capeToRisk(cape) {
+    if (cape >= 1500) return { label: '⚡⚡⚡ High',     color: '#ff2222' };
+    if (cape >= 500)  return { label: '⚡⚡ Moderate', color: '#ff6600' };
+    if (cape >= 100)  return { label: '⚡ Low',       color: '#ffaa00' };
+    return null;
+}
+
+function connectBlitzortung() {
+    if (!forecastLat || !forecastLon) return;
+    if (blitzWs) { try { blitzWs.onclose = null; blitzWs.close(); } catch (_) {} }
+    const url = BLITZ_SERVERS[blitzWsIdx % BLITZ_SERVERS.length];
+    blitzWs = new WebSocket(url);
+    const statusEl = document.getElementById('blitz-status');
+    statusEl.textContent = 'connecting…';
+    blitzWs.onopen = () => {
+        blitzWs.send(JSON.stringify({
+            west:  forecastLon - 15, east:  forecastLon + 15,
+            south: forecastLat - 15, north: forecastLat + 15
+        }));
+        statusEl.textContent = '';
+    };
+    blitzWs.onmessage = e => { try { handleStrike(JSON.parse(e.data)); } catch (_) {} };
+    blitzWs.onerror   = () => blitzWs.close();
+    blitzWs.onclose   = () => {
+        statusEl.textContent = 'reconnecting…';
+        blitzWsIdx++;
+        setTimeout(connectBlitzortung, 8000);
+    };
+}
+
+function handleStrike(msg) {
+    if (!msg.lat || !msg.lon || !forecastLat) return;
+    const dist = haversine(forecastLat, forecastLon, msg.lat, msg.lon);
+    if (dist > alertRadius) return;
+    const now = Date.now();
+    const ms  = msg.time ? msg.time / 1e6 : now;
+    recentStrikes.push({ ms, dist: Math.round(dist), dir: bearing(forecastLat, forecastLon, msg.lat, msg.lon) });
+    recentStrikes = recentStrikes.filter(s => s.ms > now - 30 * 60000);
+    renderLightningAlert();
+}
+
+function renderLightningAlert() {
+    const alertEl = document.getElementById('lightning-alert');
+    const msgEl   = document.getElementById('lightning-msg');
+    if (recentStrikes.length === 0) { alertEl.hidden = true; return; }
+    const closest = recentStrikes.reduce((a, b) => a.dist < b.dist ? a : b);
+    msgEl.textContent = `⚡ ${recentStrikes.length} strike${recentStrikes.length > 1 ? 's' : ''} within ${alertRadius} km — closest ${closest.dist} km ${closest.dir}`;
+    alertEl.hidden = false;
 }
 
 // ============================================================
@@ -396,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!p.hidden) {
             renderNodeConfig();
             document.getElementById('location-input').value = wxLocation;
+            document.getElementById('radius-input').value   = alertRadius;
         }
     });
 
@@ -407,6 +510,12 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('wxLocation', v);
             fetchForecast();
         }
+    });
+
+    // Save alert radius
+    document.getElementById('save-radius').addEventListener('click', () => {
+        const v = parseInt(document.getElementById('radius-input').value);
+        if (v > 0) { alertRadius = v; localStorage.setItem('alertRadius', v); }
     });
 
     // Live-save node names on input

@@ -247,6 +247,8 @@ class WeatherApp(ctk.CTk):
         self.wx_desc_lbl.pack()
         self.wx_wind_lbl = ctk.CTkLabel(frame, text="Wind max: --", font=("Arial", 9), text_color="#aaaaaa")
         self.wx_wind_lbl.pack()
+        self.wx_lightning_lbl = ctk.CTkLabel(frame, text="", font=("Arial", 9), text_color="#555555")
+        self.wx_lightning_lbl.pack()
         self.wx_time_lbl = ctk.CTkLabel(frame, text="--", font=("Arial", 8), text_color="#555555")
         self.wx_time_lbl.pack(pady=(0, 4))
 
@@ -256,6 +258,13 @@ class WeatherApp(ctk.CTk):
             font=("Arial", 12), text_color="#aaaaaa"
         )
         # Not packed here — _repack_header handles it based on mode
+
+    @staticmethod
+    def _cape_to_risk(cape):
+        if cape >= 1500: return ('⚡⚡⚡ High',     '#ff2222')
+        if cape >= 500:  return ('⚡⚡ Moderate', '#ff6600')
+        if cape >= 100:  return ('⚡ Low',       '#ffaa00')
+        return None
 
     def _update_weather_card(self):
         if not self.weather_data:
@@ -268,6 +277,11 @@ class WeatherApp(ctk.CTk):
         self.wx_temp_lbl.configure(text=f"{t_min:.0f}° / {t_max:.0f}°C")
         self.wx_desc_lbl.configure(text=desc)
         self.wx_wind_lbl.configure(text=f"Wind max: {d.get('wind', 0):.0f} m/s")
+        risk = self._cape_to_risk(d.get('max_cape', 0))
+        if risk:
+            self.wx_lightning_lbl.configure(text=risk[0], text_color=risk[1])
+        else:
+            self.wx_lightning_lbl.configure(text="", text_color="#555555")
         self.wx_time_lbl.configure(text=f"Updated {d.get('updated', '--')}")
         self.wx_compact_lbl.configure(text=f"{t_min:.0f}° / {t_max:.0f}°C  ·  {desc}")
 
@@ -292,17 +306,24 @@ class WeatherApp(ctk.CTk):
             wx_url = (f"https://api.open-meteo.com/v1/forecast"
                       f"?latitude={lat}&longitude={lon}"
                       f"&daily=temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max"
-                      f"&timezone=auto&forecast_days=2")
+                      f"&hourly=cape&timezone=auto&forecast_days=2")
             with urllib.request.urlopen(wx_url, timeout=10) as resp:
                 wx = json.loads(resp.read())
 
             daily = wx['daily']
+            now_iso = datetime.now().strftime('%Y-%m-%dT%H')
+            hourly_times = wx.get('hourly', {}).get('time', [])
+            h_idx = next((i for i, t in enumerate(hourly_times) if t.startswith(now_iso)), 0)
+            cape_values = [v for v in wx.get('hourly', {}).get('cape', [])[h_idx:h_idx + 6] if v is not None]
+            max_cape = max(cape_values) if cape_values else 0
+
             self.weather_data = {
                 'city':     city,
                 'temp_max': daily['temperature_2m_max'][1],
                 'temp_min': daily['temperature_2m_min'][1],
                 'code':     daily['weather_code'][1],
                 'wind':     daily['wind_speed_10m_max'][1],
+                'max_cape': max_cape,
                 'updated':  datetime.now().strftime('%H:%M'),
             }
             self.after(0, self._update_weather_card)

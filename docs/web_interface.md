@@ -53,6 +53,8 @@ Returns `OK` on success, HTTP 400 on invalid `node_id`.
 - **Node renaming**: Settings panel (⚙ button); names stored in `localStorage`.
 - **Forecast location**: Configurable in settings; stored in `localStorage`.
 - **Auto-refresh**: Latest cards every 60s; full data every 5 min when viewing Today.
+- **Lightning potential (CAPE)**: Open-Meteo `hourly=cape` fetched alongside the forecast. Next-6-hour max CAPE shown in the forecast card as ⚡ Low / ⚡⚡ Moderate / ⚡⚡⚡ High with colour coding.
+- **Real-time strikes (Blitzortung)**: WebSocket connection to `ws1/3/7.blitzortung.org`. Subscribes to a ±15° bounding box around the forecast location. Strikes within the configurable alert radius (default 100 km) appear in a pulsing orange banner showing count, closest distance, and compass bearing. Radius configurable in Settings panel and stored in `localStorage`.
 
 ## PWA (Progressive Web App)
 

@@ -293,3 +293,24 @@ body {
     flex-shrink: 0;
 }
 #ios-hint button:hover { color: #aaaaaa; }
+
+/* ---- LIGHTNING ALERT ---- */
+#lightning-alert {
+    background: #1f1100;
+    border: 1px solid #ff6600;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #ffaa44;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: pulse-lightning 2s ease-in-out infinite;
+}
+@keyframes pulse-lightning {
+    0%, 100% { border-color: #ff6600; }
+    50%       { border-color: #ffaa00; box-shadow: 0 0 8px #ff660044; }
+}
+#blitz-status { font-size: 11px; color: #555555; white-space: nowrap; flex-shrink: 0; }
+.wx-lightning  { font-size: 11px; margin-top: 1px; }

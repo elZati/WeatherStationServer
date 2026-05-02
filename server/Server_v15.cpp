@@ -147,30 +147,38 @@ void printNodes() {
 }
 
 /*
- * uploadData(): Push local sensor values to the remote MySQL database.
+ * http_get(): Fire-and-forget HTTP GET. Timeout 10s so internet outages don't block.
  */
-void uploadData() {
-    if (last_seen[1] == 0 && last_seen[2] == 0) return;
-    CURL *curl;
-    CURLcode res;
-    char url[512];
-    
-    // Construct the PHP GET request with current readings
-    sprintf(url, "http://www.rxtx-designs.com/saa/upload_values.php?tempin=%.2f&temp=%.2f&humin=%.2f&hum=%.2f&press=%.2f",
-            nodes[2].sensor1, nodes[1].sensor1, nodes[2].sensor2, nodes[1].sensor2, nodes[1].sensor3);
-            
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
+static void http_get(const char *url) {
+    CURL *curl = curl_easy_init();
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L); // Don't hang if internet is down
-        res = curl_easy_perform(curl);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // discard response body
+        curl_easy_perform(curl);
         curl_easy_cleanup(curl);
     }
-    curl_global_cleanup();
+}
+
+/*
+ * uploadData(): Push each active node's data to the remote MySQL database.
+ * Each node is uploaded individually so the server can map them by node_id.
+ */
+void uploadData() {
+    for (int i = 1; i <= 5; i++) {
+        if (last_seen[i] == 0) continue;
+        char url[512];
+        snprintf(url, sizeof(url),
+            "http://www.rxtx-designs.com/saa/upload_values.php"
+            "?node_id=%d&temp=%.2f&hum=%.2f&press=%.2f&batt=%.2f",
+            i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4);
+        http_get(url);
+    }
 }
 
 int main(int argc, char** argv) {
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
     // Initialize Radio
     if (!radio.begin()) {
         printf("CRITICAL: SPI Radio connection failed.\n");

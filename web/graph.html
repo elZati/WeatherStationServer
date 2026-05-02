@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RXTX Weather Station</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Weather">
+    <link rel="apple-touch-icon" href="icon.php?size=180">
+    <link rel="stylesheet" href="weather.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+    <!-- Top bar -->
+    <div id="topbar">
+        <div id="site-title">RXTX WEATHER STATION</div>
+        <button id="settings-toggle" class="icon-btn" title="Settings">&#9881;</button>
+    </div>
+
+    <!-- Node cards + forecast -->
+    <div id="cards-row">
+        <div id="node-cards"></div>
+        <div id="forecast-card" class="card">
+            <div class="card-label">TOMORROW</div>
+            <div id="wx-city" class="wx-city">--</div>
+            <div id="wx-temp" class="wx-temp">-- / --&deg;C</div>
+            <div id="wx-desc" class="wx-secondary">--</div>
+            <div id="wx-wind" class="wx-secondary">Wind max: --</div>
+            <div id="wx-updated" class="wx-updated">--</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+        <div id="quick-btns">
+            <button class="range-btn active" data-days="0">Today</button>
+            <button class="range-btn" data-days="7">7 days</button>
+            <button class="range-btn" data-days="30">30 days</button>
+        </div>
+        <div id="date-range">
+            <label>From <input type="date" id="date-from"></label>
+            <label>To <input type="date" id="date-to"></label>
+            <button id="refresh-btn" class="primary-btn">Refresh</button>
+        </div>
+        <div id="refresh-status"></div>
+    </div>
+
+    <!-- Charts -->
+    <div id="charts-container">
+        <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
+        <div class="chart-wrap"><canvas id="chart-hum"></canvas></div>
+    </div>
+
+    <!-- Stats table -->
+    <div id="stats-container"></div>
+
+    <!-- Settings panel (hidden by default) -->
+    <div id="settings-panel" hidden>
+        <div class="settings-section">
+            <h3>Node Labels</h3>
+            <div id="node-config-list"></div>
+        </div>
+        <div class="settings-section">
+            <h3>Forecast Location</h3>
+            <div class="input-row">
+                <input type="text" id="location-input" placeholder="City name">
+                <button id="save-location" class="primary-btn">Update</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const NODE_COLORS   = { 1:'#ff7f0e', 2:'#1f77b4', 3:'#2ca02c', 4:'#9467bd', 5:'#d62728' };
+const DEFAULT_NAMES = { 1:'Outdoor', 2:'Indoor',  3:'Garden',  4:'Garage',  5:'Attic'   };
+const PRESSURE_SENTINEL = 33.33;
+const BATT_CRITICAL     = 2.6;
+const AUTO_REFRESH_MS   = 60000;
+
+const WMO = {
+    0:'Clear sky',      1:'Mainly clear',   2:'Partly cloudy',  3:'Overcast',
+    45:'Fog',           48:'Icy fog',
+    51:'Lt drizzle',    53:'Drizzle',        55:'Hvy drizzle',
+    61:'Light rain',    63:'Rain',           65:'Heavy rain',
+    71:'Light snow',    73:'Snow',           75:'Heavy snow',    77:'Snow grains',
+    80:'Showers',       81:'Rain showers',   82:'Hvy showers',
+    85:'Snow showers',  86:'Hvy snow showers',
+    95:'Thunderstorm',  96:'Storm + hail',   99:'Storm + hail',
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let nodeNames  = JSON.parse(localStorage.getItem('nodeNames')  || 'null') || {};
+let wxLocation = localStorage.getItem('wxLocation') || 'Tampere';
+let hiddenNodes = new Set();
+let latestData  = {};
+let tempChart, humChart;
+
+function nodeName(id)  { return nodeNames[id]  || DEFAULT_NAMES[id]  || `Node ${id}`; }
+function nodeColor(id) { return NODE_COLORS[id] || '#aaaaaa'; }
+
+// ============================================================
+// CHARTS
+// ============================================================
+function makeChartOptions(title) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        elements: { point: { radius: 0, hoverRadius: 4 } },
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: { color: '#cccccc', boxWidth: 14, padding: 16, font: { size: 12 } }
+            },
+            title: {
+                display: true, text: title,
+                color: '#888888', padding: { bottom: 6 }, font: { size: 12 }
+            }
+        },
+        scales: {
+            x: {
+                type: 'time',
+                time: {
+                    tooltipFormat: 'dd/MM HH:mm',
+                    displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'dd/MM' }
+                },
+                grid: { color: 'rgba(255,255,255,0.04)' },
+                ticks: { color: '#555555', maxTicksLimit: 8, font: { size: 11 } }
+            },
+            y: {
+                grid: { color: 'rgba(255,255,255,0.04)' },
+                ticks: { color: '#555555', font: { size: 11 } }
+            }
+        }
+    };
+}
+
+function initCharts() {
+    Chart.defaults.color = '#888';
+    Chart.defaults.font.family = 'Arial, Helvetica, sans-serif';
+
+    const humOpts = makeChartOptions('Humidity (%RH)');
+    humOpts.scales.y.min = 0;
+    humOpts.scales.y.max = 100;
+
+    tempChart = new Chart(document.getElementById('chart-temp'), {
+        type: 'line', data: { datasets: [] },
+        options: makeChartOptions('Temperature (°C)')
+    });
+    humChart = new Chart(document.getElementById('chart-hum'), {
+        type: 'line', data: { datasets: [] },
+        options: humOpts
+    });
+}
+
+// ============================================================
+// DATA FETCHING
+// ============================================================
+async function apiFetch(params) {
+    const qs = new URLSearchParams(params).toString();
+    const resp = await fetch(`datafetcher.php?${qs}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.json();
+}
+
+// ============================================================
+// RENDERING — NODE CARDS
+// ============================================================
+function renderNodeCards() {
+    const container = document.getElementById('node-cards');
+    container.innerHTML = '';
+    const ids = Object.keys(latestData).map(Number).sort();
+
+    if (ids.length === 0) {
+        container.innerHTML = '<div class="no-data-msg">No sensor data received yet</div>';
+        return;
+    }
+
+    ids.forEach(id => {
+        const d      = latestData[id];
+        const color  = nodeColor(id);
+        const hidden = hiddenNodes.has(id);
+        const battV  = parseFloat(d.batt);
+        const hasPress = Math.abs(parseFloat(d.press) - PRESSURE_SENTINEL) > 1.0;
+        const ago    = timeSince(d.timestamp);
+
+        const card = document.createElement('div');
+        card.className = 'node-card card' + (hidden ? ' dimmed' : '');
+        card.title = hidden ? 'Click to show on chart' : 'Click to hide from chart';
+        card.innerHTML =
+            `<div class="card-name" style="color:${color}">${nodeName(id)}</div>` +
+            `<div class="card-temp">${parseFloat(d.temp).toFixed(1)}&deg;C</div>` +
+            `<div class="card-hum">${parseFloat(d.hum).toFixed(0)}% RH</div>` +
+            (hasPress ? `<div class="card-press">${parseFloat(d.press).toFixed(0)} hPa</div>` : '') +
+            `<div class="card-batt${battV < BATT_CRITICAL ? ' batt-low' : ''}">Batt: ${battV.toFixed(2)} V</div>` +
+            `<div class="card-tx">TX: ${ago}</div>`;
+        card.addEventListener('click', () => toggleNode(id));
+        container.appendChild(card);
+    });
+}
+
+// ============================================================
+// RENDERING — CHARTS
+// ============================================================
+function renderCharts(seriesData) {
+    const tempDs = [], humDs = [];
+    Object.keys(seriesData).map(Number).sort().forEach(id => {
+        if (hiddenNodes.has(id)) return;
+        const readings = seriesData[id];
+        const color = nodeColor(id);
+        const name  = nodeName(id);
+        const base = {
+            borderColor: color, backgroundColor: color + '18',
+            borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false
+        };
+        tempDs.push({ ...base, label: name,
+            data: readings.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.temp })) });
+        humDs.push({ ...base, label: name,
+            data: readings.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.hum })) });
+    });
+    tempChart.data.datasets = tempDs; tempChart.update('none');
+    humChart.data.datasets  = humDs;  humChart.update('none');
+}
+
+// ============================================================
+// RENDERING — STATS TABLE
+// ============================================================
+function renderStats(statsData) {
+    const container = document.getElementById('stats-container');
+    const ids = Object.keys(statsData).map(Number).sort();
+    if (ids.length === 0) { container.innerHTML = ''; return; }
+
+    let html = `<table id="stats-table">
+        <thead><tr>
+            <th>Node</th><th>Min Temp</th><th>Max Temp</th>
+            <th>Min Hum</th><th>Max Hum</th>
+        </tr></thead><tbody>`;
+    ids.forEach(id => {
+        const s = statsData[id];
+        html +=
+            `<tr><td><span class="dot" style="background:${nodeColor(id)}"></span>${nodeName(id)}</td>` +
+            `<td>${s.min_temp.toFixed(1)} &deg;C</td><td>${s.max_temp.toFixed(1)} &deg;C</td>` +
+            `<td>${s.min_hum.toFixed(0)} %</td><td>${s.max_hum.toFixed(0)} %</td></tr>`;
+    });
+    container.innerHTML = html + '</tbody></table>';
+}
+
+// ============================================================
+// FORECAST
+// ============================================================
+async function fetchForecast() {
+    try {
+        const geo = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search` +
+            `?name=${encodeURIComponent(wxLocation)}&count=1&language=en&format=json`
+        ).then(r => r.json());
+        if (!geo.results?.length) return;
+
+        const { latitude: lat, longitude: lon, name: city } = geo.results[0];
+        const wx = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&daily=temperature_2m_max,temperature_2m_min,weather_code,wind_speed_10m_max` +
+            `&timezone=auto&forecast_days=2`
+        ).then(r => r.json());
+
+        const d = wx.daily;
+        document.getElementById('wx-city').textContent = city;
+        document.getElementById('wx-temp').textContent =
+            `${Math.round(d.temperature_2m_min[1])}° / ${Math.round(d.temperature_2m_max[1])}°C`;
+        document.getElementById('wx-desc').textContent = WMO[d.weather_code[1]] || 'Unknown';
+        document.getElementById('wx-wind').textContent =
+            `Wind max: ${Math.round(d.wind_speed_10m_max[1])} m/s`;
+        document.getElementById('wx-updated').textContent =
+            `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } catch (e) {
+        console.warn('Forecast error:', e);
+    }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function timeSince(ts) {
+    const diff = Math.floor((Date.now() - new Date(ts.replace(' ', 'T')).getTime()) / 1000);
+    if (diff < 60)   return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+}
+function todayStr()     { return new Date().toISOString().slice(0, 10); }
+function daysAgoStr(n)  { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+function setStatus(msg) { document.getElementById('refresh-status').textContent = msg; }
+
+function toggleNode(id) {
+    hiddenNodes.has(id) ? hiddenNodes.delete(id) : hiddenNodes.add(id);
+    renderNodeCards();
+    const from = document.getElementById('date-from').value;
+    const to   = document.getElementById('date-to').value;
+    apiFetch({ action: 'series', from, to }).then(renderCharts).catch(console.error);
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function renderNodeConfig() {
+    const container = document.getElementById('node-config-list');
+    container.innerHTML = '';
+    Object.keys(latestData).map(Number).sort().forEach(id => {
+        const row = document.createElement('div');
+        row.className = 'config-row';
+        row.innerHTML =
+            `<span class="dot" style="background:${nodeColor(id)}"></span>` +
+            `<label>Node ${id}</label>` +
+            `<input type="text" data-nid="${id}" value="${nodeName(id)}" placeholder="Node ${id}">`;
+        container.appendChild(row);
+    });
+}
+
+function saveNodeNames() {
+    document.querySelectorAll('#node-config-list input[data-nid]').forEach(input => {
+        const id = parseInt(input.dataset.nid);
+        nodeNames[id] = input.value.trim() || DEFAULT_NAMES[id] || `Node ${id}`;
+    });
+    localStorage.setItem('nodeNames', JSON.stringify(nodeNames));
+    renderNodeCards();
+    const from = document.getElementById('date-from').value;
+    const to   = document.getElementById('date-to').value;
+    apiFetch({ action: 'series', from, to }).then(renderCharts).catch(console.error);
+}
+
+// ============================================================
+// MAIN REFRESH
+// ============================================================
+async function refreshAll() {
+    setStatus('Refreshing…');
+    const from = document.getElementById('date-from').value;
+    const to   = document.getElementById('date-to').value;
+    try {
+        const [latest, series, stats] = await Promise.all([
+            apiFetch({ action: 'latest' }),
+            apiFetch({ action: 'series', from, to }),
+            apiFetch({ action: 'stats',  from, to }),
+        ]);
+        latestData = {};
+        latest.forEach(r => { latestData[parseInt(r.node_id)] = r; });
+        renderNodeCards();
+        renderCharts(series);
+        renderStats(stats);
+        setStatus(`Updated ${new Date().toLocaleTimeString()}`);
+    } catch (e) {
+        setStatus('Error — check server');
+        console.error(e);
+    }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    initCharts();
+
+    document.getElementById('date-from').value = todayStr();
+    document.getElementById('date-to').value   = todayStr();
+
+    // Quick range buttons
+    document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const days = parseInt(btn.dataset.days);
+            document.getElementById('date-from').value = days === 0 ? todayStr() : daysAgoStr(days);
+            document.getElementById('date-to').value   = todayStr();
+            refreshAll();
+        });
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+        refreshAll();
+    });
+
+    // Settings panel toggle
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+        const p = document.getElementById('settings-panel');
+        p.hidden = !p.hidden;
+        if (!p.hidden) {
+            renderNodeConfig();
+            document.getElementById('location-input').value = wxLocation;
+        }
+    });
+
+    // Save location
+    document.getElementById('save-location').addEventListener('click', () => {
+        const v = document.getElementById('location-input').value.trim();
+        if (v) {
+            wxLocation = v;
+            localStorage.setItem('wxLocation', v);
+            fetchForecast();
+        }
+    });
+
+    // Live-save node names on input
+    document.getElementById('node-config-list').addEventListener('input', saveNodeNames);
+
+    // Initial load
+    refreshAll();
+    fetchForecast();
+
+    // Auto-refresh latest cards every minute
+    setInterval(() => {
+        apiFetch({ action: 'latest' })
+            .then(latest => {
+                latestData = {};
+                latest.forEach(r => { latestData[parseInt(r.node_id)] = r; });
+                renderNodeCards();
+            })
+            .catch(console.error);
+    }, AUTO_REFRESH_MS);
+
+    // Auto-refresh full data every 5 min when viewing Today
+    setInterval(() => {
+        if (document.querySelector('.range-btn.active')?.dataset?.days === '0') {
+            refreshAll();
+        }
+    }, 5 * 60000);
+});
+</script>
+
+<!-- PWA: service worker + iOS install hint -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW:', e));
+    });
+}
+
+// Show a one-time install hint for iOS Safari users not already in standalone mode
+(function () {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone;
+    const dismissed = localStorage.getItem('iosHint');
+    if (isIOS && !isStandalone && !dismissed) {
+        const banner = document.createElement('div');
+        banner.id = 'ios-hint';
+        banner.innerHTML =
+            'Install: tap <strong>&#9638; Share</strong> then <strong>Add to Home Screen</strong>' +
+            ' <button onclick="localStorage.setItem(\'iosHint\',1);this.parentElement.remove()">&#x2715;</button>';
+        document.getElementById('app').prepend(banner);
+    }
+}());
+</script>
+</body>
+</html>

@@ -37,11 +37,11 @@ All responses are JSON. `Content-Type: application/json`.
 
 ## Data Upload — upload_values.php
 
-Called by Pi server `uploadData()` via HTTP GET.
+Called by Pi server `uploadData()` via **HTTP POST** with a JSON body every 15 minutes.
 
-Parameters: `node_id`, `temp`, `hum`, `press`, `batt`.
+Body: JSON array of node objects — `[{"node_id":1,"temp":21.5,"hum":65.0,"press":1013.2,"batt":3.2}, …]`
 
-Returns `OK` on success, HTTP 400 on invalid `node_id`.
+Invalid or out-of-range `node_id` values are silently skipped. Returns `OK` on success, HTTP 400 if the body is not a valid JSON array.
 
 ## Web Page Features (graph.html)
 

@@ -2,15 +2,12 @@
 ini_set('log_errors', 1);
 ini_set('error_log', 'error.log');
 
-$node_id = isset($_GET['node_id']) ? (int)$_GET['node_id'] : 0;
-$temp    = isset($_GET['temp'])    ? (float)$_GET['temp']  : null;
-$hum     = isset($_GET['hum'])     ? (float)$_GET['hum']   : null;
-$press   = isset($_GET['press'])   ? (float)$_GET['press'] : null;
-$batt    = isset($_GET['batt'])    ? (float)$_GET['batt']  : null;
+$raw   = file_get_contents('php://input');
+$nodes = json_decode($raw, true);
 
-if ($node_id < 1 || $node_id > 5) {
+if (!is_array($nodes) || count($nodes) === 0) {
     http_response_code(400);
-    exit('Invalid node_id');
+    exit('Bad request');
 }
 
 $conn = new mysqli('localhost', 'rxtxdesi_saa', 'Belg1a', 'rxtxdesi_weather');
@@ -22,8 +19,18 @@ if ($conn->connect_errno) {
 $stmt = $conn->prepare(
     'INSERT INTO node_readings (node_id, temp, hum, press, batt) VALUES (?,?,?,?,?)'
 );
-$stmt->bind_param('idddd', $node_id, $temp, $hum, $press, $batt);
-$stmt->execute();
+
+foreach ($nodes as $n) {
+    $node_id = isset($n['node_id']) ? (int)$n['node_id'] : 0;
+    if ($node_id < 1 || $node_id > 5) continue;
+    $temp  = isset($n['temp'])  ? (float)$n['temp']  : null;
+    $hum   = isset($n['hum'])   ? (float)$n['hum']   : null;
+    $press = isset($n['press']) ? (float)$n['press'] : null;
+    $batt  = isset($n['batt'])  ? (float)$n['batt']  : null;
+    $stmt->bind_param('idddd', $node_id, $temp, $hum, $press, $batt);
+    $stmt->execute();
+}
+
 $stmt->close();
 $conn->close();
 

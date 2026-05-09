@@ -25,7 +25,7 @@
 using namespace std;
 
 // --- System Definitions ---
-#define NODE_UPLOAD_DELAY (1000*60*5) // Time between web database uploads
+#define NODE_UPLOAD_DELAY (1000*60*15) // Time between web database uploads
 #define NODE_PRINTOUT_DELAY 2000      // Time between terminal refreshes
 #define clear() printf("\033[H\033[J") // Terminal escape code to clear screen
 
@@ -147,33 +147,46 @@ void printNodes() {
 }
 
 /*
- * http_get(): Fire-and-forget HTTP GET. Timeout 10s so internet outages don't block.
+ * http_post_json(): Fire-and-forget HTTP POST with a JSON body.
+ * Timeout 10s so internet outages don't block the radio loop.
  */
-static void http_get(const char *url) {
+static size_t discard_cb(void *, size_t size, size_t n, void *) { return size * n; }
+
+static void http_post_json(const char *url, const char *body) {
     CURL *curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // discard response body
-        curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-    }
+    if (!curl) return;
+    struct curl_slist *headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, discard_cb);
+    curl_easy_perform(curl);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
 }
 
 /*
- * uploadData(): Push each active node's data to the remote MySQL database.
- * Each node is uploaded individually so the server can map them by node_id.
+ * uploadData(): Batch all active nodes into one JSON POST, reducing the
+ * request count from N-per-cycle to 1-per-cycle.
  */
 void uploadData() {
+    char body[512] = "[";
+    bool first = true;
     for (int i = 1; i <= 5; i++) {
         if (last_seen[i] == 0) continue;
-        char url[512];
-        snprintf(url, sizeof(url),
-            "http://www.rxtx-designs.com/saa/upload_values.php"
-            "?node_id=%d&temp=%.2f&hum=%.2f&press=%.2f&batt=%.2f",
+        char entry[128];
+        snprintf(entry, sizeof(entry),
+            "%s{\"node_id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,\"batt\":%.2f}",
+            first ? "" : ",",
             i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4);
-        http_get(url);
+        strncat(body, entry, sizeof(body) - strlen(body) - 1);
+        first = false;
     }
+    strncat(body, "]", sizeof(body) - strlen(body) - 1);
+    if (!first)
+        http_post_json("http://www.rxtx-designs.com/saa/upload_values.php", body);
 }
 
 int main(int argc, char** argv) {

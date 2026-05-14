@@ -142,7 +142,14 @@ void poll_sensors() {
   }
   
   packet.sensor1 = t;
-  packet.sensor2 = myHumidity.readHumidity();
+
+  float h = myHumidity.readHumidity();
+  if (h > 100.0 || h < 0.0) {
+      delay(150);
+      h = myHumidity.readHumidity();
+  }
+  packet.sensor2 = (h > 100.0 || h < 0.0) ? -99.9 : h;
+
   packet.sensor3 = 33.33; // Placeholder
   packet.sensor4 = getBatteryVoltage(); 
 

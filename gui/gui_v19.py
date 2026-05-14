@@ -690,9 +690,13 @@ class WeatherApp(ctk.CTk):
                 continue
             t_seg, temp_seg, hum_seg = self._get_plot_data(nid)
             visible_temps.extend(temp_seg)
-            visible_hums.extend(hum_seg)
             self.temp_lines[nid].set_data(t_seg, temp_seg)
-            self.hum_lines[nid].set_data(t_seg, hum_seg)
+            # Filter out -99.9 humidity sentinel (sensor error)
+            valid_hum = [(t, h) for t, h in zip(t_seg, hum_seg) if h >= 0]
+            hum_t = [p[0] for p in valid_hum]
+            hum_h = [p[1] for p in valid_hum]
+            visible_hums.extend(hum_h)
+            self.hum_lines[nid].set_data(hum_t, hum_h)
 
         if visible_temps:
             t_min, t_max = min(visible_temps), max(visible_temps)

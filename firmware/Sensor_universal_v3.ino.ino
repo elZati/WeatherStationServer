@@ -243,10 +243,12 @@ void poll_sensors() {
     myHumidity.begin();
     packet.sensor1 = myHumidity.readTemperature();
     packet.sensor2 = myHumidity.readHumidity();
-    
-    // If Humidity is clearly wrong, flag it for the Pi
     if (packet.sensor2 < 0 || packet.sensor2 > 100) {
-      packet.sensor2 = -99.9; 
+      delay(150);
+      packet.sensor2 = myHumidity.readHumidity();
+    }
+    if (packet.sensor2 < 0 || packet.sensor2 > 100) {
+      packet.sensor2 = -99.9;
     }
   } else {
     packet.sensor1 = 0.0;

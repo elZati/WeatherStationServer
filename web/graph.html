@@ -220,7 +220,7 @@ function renderNodeCards() {
         card.innerHTML =
             `<div class="card-name" style="color:${color}">${nodeName(id)}</div>` +
             `<div class="card-temp">${parseFloat(d.temp).toFixed(1)}&deg;C</div>` +
-            `<div class="card-hum">${parseFloat(d.hum).toFixed(0)}% RH</div>` +
+            (parseFloat(d.hum) >= 0 ? `<div class="card-hum">${parseFloat(d.hum).toFixed(0)}% RH</div>` : '') +
             (hasPress ? `<div class="card-press">${parseFloat(d.press).toFixed(0)} hPa</div>` : '') +
             `<div class="card-batt${battV < BATT_CRITICAL ? ' batt-low' : ''}">Batt: ${battV.toFixed(2)} V</div>` +
             `<div class="card-tx">TX: ${ago}</div>`;
@@ -246,7 +246,7 @@ function renderCharts(seriesData) {
         tempDs.push({ ...base, label: name,
             data: readings.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.temp })) });
         humDs.push({ ...base, label: name,
-            data: readings.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.hum })) });
+            data: readings.filter(r => parseFloat(r.hum) >= 0).map(r => ({ x: r.ts.replace(' ', 'T'), y: r.hum })) });
     });
     tempChart.data.datasets = tempDs; tempChart.update('none');
     humChart.data.datasets  = humDs;  humChart.update('none');

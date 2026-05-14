@@ -93,6 +93,51 @@
 </div>
 <script>
 // ============================================================
+// CROSSHAIR PLUGIN — always shows tooltip at nearest x point per dataset
+// ============================================================
+const crosshairPlugin = {
+    id: 'crosshair',
+    afterEvent(chart, args) {
+        const e = args.event;
+        if (e.type === 'mouseout') {
+            chart._chX = null;
+            args.changed = true;
+            return;
+        }
+        if (e.type !== 'mousemove') return;
+        const { left, right } = chart.chartArea;
+        if (e.x < left || e.x > right) { chart._chX = null; args.changed = true; return; }
+        chart._chX = e.x;
+        const elements = [];
+        chart.data.datasets.forEach((_, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (!meta.visible || !meta.data.length) return;
+            let best = 0, bestDist = Infinity;
+            meta.data.forEach((pt, i) => {
+                const d = Math.abs(pt.x - e.x);
+                if (d < bestDist) { bestDist = d; best = i; }
+            });
+            elements.push({ datasetIndex: di, index: best });
+        });
+        chart.tooltip.setActiveElements(elements, { x: e.x, y: e.y });
+        args.changed = true;
+    },
+    afterDraw(chart) {
+        if (chart._chX == null) return;
+        const { ctx, chartArea: { top, bottom } } = chart;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(chart._chX, top);
+        ctx.lineTo(chart._chX, bottom);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.stroke();
+        ctx.restore();
+    }
+};
+Chart.register(crosshairPlugin);
+
+// ============================================================
 // CONFIG
 // ============================================================
 const NODE_COLORS   = { 1:'#ff7f0e', 2:'#1f77b4', 3:'#2ca02c', 4:'#9467bd', 5:'#d62728' };
@@ -138,9 +183,10 @@ function makeChartOptions(title) {
     return {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'x', intersect: false },
-        elements: { point: { radius: 0, hoverRadius: 4 } },
+        interaction: { mode: 'none' },
+        elements: { point: { radius: 2, hoverRadius: 6 } },
         plugins: {
+            tooltip: { animation: false },
             legend: {
                 position: 'top',
                 labels: { color: '#cccccc', boxWidth: 14, padding: 16, font: { size: 12 } }

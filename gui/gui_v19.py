@@ -1,15 +1,31 @@
 import customtkinter as ctk
 import json
+import logging
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import deque
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 import os
 import time
 import threading
 import urllib.request
 import urllib.parse
+
+
+def _setup_logging():
+    handler = RotatingFileHandler(
+        '../gui.log', maxBytes=2 * 1024 * 1024, backupCount=1
+    )
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger().addHandler(handler)
+
+_setup_logging()
 
 # ==============================================================================
 # DEVELOPER CONFIGURATION - SYSTEM CALIBRATION
@@ -95,6 +111,7 @@ class WeatherApp(ctk.CTk):
         self.weather_location = DEFAULT_LOCATION
         self.weather_data     = {}
 
+        logging.info("GUI started — reading %s", JSON_FILE)
         self.setup_ui()
         self.update_loop()
         self.graph_loop()
@@ -310,7 +327,7 @@ class WeatherApp(ctk.CTk):
 
             results = geo.get('results')
             if not results:
-                print(f"Weather: location '{self.weather_location}' not found")
+                logging.warning("Weather: location '%s' not found", self.weather_location)
                 return
 
             lat  = results[0]['latitude']
@@ -341,8 +358,10 @@ class WeatherApp(ctk.CTk):
                 'updated':  datetime.now().strftime('%H:%M'),
             }
             self.after(0, self._update_weather_card)
-        except Exception as e:
-            print(f"Weather fetch error: {e}")
+            logging.info("Weather fetched for %s (CAPE max %.0f J/kg)",
+                         city, self.weather_data.get('max_cape', 0))
+        except Exception:
+            logging.exception("Weather fetch error")
 
     def weather_loop(self):
         """Fetches weather on startup and every 6 hours thereafter."""
@@ -548,6 +567,9 @@ class WeatherApp(ctk.CTk):
     # --------------------------------------------------------------------------
 
     def _init_node(self, nid, now_unix, initial_temp, initial_press, has_aq=False):
+        hw = "HW2.0" if has_aq else "HW1.x"
+        logging.info("New node %d (%s) detected — %s", nid,
+                     self.sensor_names.get(nid, f"Node {nid}"), hw)
         has_pressure = abs(initial_press - PRESSURE_SENTINEL) > 1.0
         raw_maxlen   = WINDOW_CONFIG['15min']['maxlen']
         self.data_store[nid] = {
@@ -711,6 +733,8 @@ class WeatherApp(ctk.CTk):
                         if nid in self.active_nodes:
                             self.active_nodes.discard(nid)
                             self.node_widgets[nid]['frame'].pack_forget()
+                            logging.warning("Node %d (%s) timed out (%ds since last TX)",
+                                            nid, self.sensor_names.get(nid, f"Node {nid}"), delta)
                     elif nid not in self.active_nodes:
                         self.active_nodes.add(nid)
                         if not self.sidebar_visible:
@@ -718,8 +742,8 @@ class WeatherApp(ctk.CTk):
                         else:
                             self.node_widgets[nid]['frame'].pack(side="left", padx=5, pady=5, fill="both", expand=True)
 
-        except Exception as e:
-            print(f"Update Error: {e}")
+        except Exception:
+            logging.exception("update_loop error")
 
         self.after(UPDATE_RATE_MS, self.update_loop)
 

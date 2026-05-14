@@ -12,11 +12,13 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <cstdarg>
 #include <iostream>
 #include <unistd.h>
 #include <ctime>
 #include <stdio.h>
 #include <cstring>
+#include <sys/stat.h>
 #include <curl/curl.h>
 #include "RF24.h"
 
@@ -26,6 +28,33 @@ using namespace std;
 #define NODE_UPLOAD_DELAY  (1000*60*15)  // Web upload period (ms)
 #define NODE_PRINTOUT_DELAY 2000         // Terminal refresh period (ms)
 #define clear() printf("\033[H\033[J")
+#define LOG_FILE   "../server.log"
+#define LOG_BACKUP "../server.log.1"
+#define LOG_MAX_BYTES (2 * 1024 * 1024)  // rotate at 2 MB
+
+// =========================================================================
+// Logging — timestamped append to server.log; rotates at 2 MB.
+// =========================================================================
+static void log_msg(const char *level, const char *fmt, ...) {
+    struct stat st;
+    if (stat(LOG_FILE, &st) == 0 && st.st_size > LOG_MAX_BYTES)
+        rename(LOG_FILE, LOG_BACKUP);
+
+    FILE *f = fopen(LOG_FILE, "a");
+    if (!f) return;
+
+    time_t now = time(NULL);
+    char ts[20];
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(f, "[%s] [%s] ", ts, level);
+
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(f, fmt, args);
+    va_end(args);
+    fputc('\n', f);
+    fclose(f);
+}
 
 // =========================================================================
 // PAYLOAD STRUCTS
@@ -111,6 +140,9 @@ void updateConfigs() {
                     radio.writeAckPayload(i, &sleep_cmds[i], sizeof(float));
                 radio.startListening();
                 printf(">>> CONFIG UPDATE: Radio buffers flushed and re-synced.\n");
+                log_msg("INFO", "Config update: sleep=[%.0f %.0f %.0f %.0f %.0f]",
+                        sleep_cmds[1], sleep_cmds[2], sleep_cmds[3],
+                        sleep_cmds[4], sleep_cmds[5]);
             }
         }
         fclose(f);
@@ -188,7 +220,7 @@ static size_t discard_cb(void *, size_t size, size_t n, void *) { return size * 
 
 static void http_post_json(const char *url, const char *body) {
     CURL *curl = curl_easy_init();
-    if (!curl) return;
+    if (!curl) { log_msg("ERROR", "curl_easy_init failed"); return; }
     struct curl_slist *headers = nullptr;
     headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -196,7 +228,15 @@ static void http_post_json(const char *url, const char *body) {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, discard_cb);
-    curl_easy_perform(curl);
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    if (res != CURLE_OK)
+        log_msg("ERROR", "Upload failed: %s", curl_easy_strerror(res));
+    else if (http_code != 200)
+        log_msg("WARN",  "Upload HTTP %ld (unexpected)", http_code);
+    else
+        log_msg("INFO",  "Upload OK (HTTP 200)");
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 }
@@ -240,8 +280,10 @@ void uploadData() {
 int main(int argc, char** argv) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
+    log_msg("INFO", "Server starting up");
     if (!radio.begin()) {
         printf("CRITICAL: SPI Radio connection failed.\n");
+        log_msg("ERROR", "Radio init failed — exiting");
         return 1;
     }
 
@@ -263,6 +305,7 @@ int main(int argc, char** argv) {
 
     radio.startListening();
     last_upload = __millis();
+    log_msg("INFO", "Radio OK — listening on pipes 1-5 (V1=20B V2=25B)");
 
     while (1) {
         updateConfigs();
@@ -282,6 +325,11 @@ int main(int argc, char** argv) {
                     last_seen[id]    = time(NULL);
                     radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
                     saveForUI();
+                    log_msg("INFO", "RX NODE %d V1 | T:%.1f H:%.1f P:%.1f B:%.2f",
+                            id, incoming.sensor1, incoming.sensor2,
+                            incoming.sensor3, incoming.sensor4);
+                } else {
+                    log_msg("WARN", "RX V1 invalid nodeID=%d (pipe %u)", incoming.nodeID, pipeNum);
                 }
 
             } else if (sz == sizeof(SensorPayloadV2)) {
@@ -290,7 +338,6 @@ int main(int argc, char** argv) {
                 radio.read(&incoming, sizeof(incoming));
                 int id = incoming.nodeID;
                 if (id >= 1 && id <= 5) {
-                    // Copy common fields into legacy struct for uniform storage
                     nodes[id].nodeID  = incoming.nodeID;
                     nodes[id].sensor1 = incoming.sensor1;
                     nodes[id].sensor2 = incoming.sensor2;
@@ -303,12 +350,18 @@ int main(int argc, char** argv) {
                     last_seen[id]     = time(NULL);
                     radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
                     saveForUI();
+                    log_msg("INFO", "RX NODE %d V2 | T:%.1f H:%.1f P:%.1f eCO2:%u TVOC:%u AQI:%u",
+                            id, incoming.sensor1, incoming.sensor2, incoming.sensor3,
+                            incoming.eco2, incoming.tvoc, incoming.aqi);
+                } else {
+                    log_msg("WARN", "RX V2 invalid nodeID=%d (pipe %u)", incoming.nodeID, pipeNum);
                 }
 
             } else {
                 // Unknown payload size — drain the buffer to avoid stalls
                 uint8_t buf[32];
                 radio.read(buf, sz < 32 ? sz : 32);
+                log_msg("WARN", "Unknown payload size %u on pipe %u — discarded", sz, pipeNum);
             }
         }
 

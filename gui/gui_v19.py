@@ -217,7 +217,7 @@ class WeatherApp(ctk.CTk):
         self.canvas.get_tk_widget().grid_configure(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=5)
         self.sidebar_btn.configure(width=FULLSCREEN_PANEL_W, text="◀")
         self.wx_frame.configure(width=FULLSCREEN_PANEL_W)
-        self._set_all_card_fonts(True)
+        self._set_all_card_fonts(False)
         self._repack_header("vertical")
 
     def _enter_normal_layout(self):
@@ -231,15 +231,23 @@ class WeatherApp(ctk.CTk):
         self._repack_header("horizontal")
 
     def _repack_header(self, mode):
-        """Unpack all header children and repack in the given direction."""
+        """Unpack/ungrid all header children and repack in the given direction."""
         for widget in self.header.winfo_children():
             widget.pack_forget()
+            widget.grid_forget()
         if mode == "vertical":
-            self.sidebar_btn.pack(side="top", padx=4, pady=(5, 2), fill="x")
-            self.wx_compact_lbl.pack(side="top", padx=8, pady=(0, 6))
-            for nid in sorted(self.active_nodes):
-                if nid in self.node_widgets:
-                    self.node_widgets[nid]['frame'].pack(side="top", padx=4, pady=2, fill="x")
+            self.header.grid_columnconfigure(0, weight=1)
+            self.header.grid_columnconfigure(1, weight=1)
+            self.sidebar_btn.grid(row=0, column=0, columnspan=2, padx=4, pady=(5, 2), sticky="ew")
+            self.wx_compact_lbl.grid(row=1, column=0, columnspan=2, padx=8, pady=(0, 4))
+            nids = sorted(n for n in self.active_nodes if n in self.node_widgets)
+            for i, nid in enumerate(nids):
+                self.node_widgets[nid]['frame'].grid(
+                    row=2 + i // 2, column=i % 2, padx=3, pady=2, sticky="nsew"
+                )
+            num_rows = max(1, (len(nids) + 1) // 2)
+            for r in range(2, 2 + num_rows):
+                self.header.grid_rowconfigure(r, weight=1)
         else:
             # Toggle packs first → rightmost; weather card is second from right
             self.sidebar_btn.pack(side="right", padx=(0, 4), pady=5)
@@ -381,9 +389,7 @@ class WeatherApp(ctk.CTk):
     def create_sensor_card(self, nid, has_pressure, has_aq=False):
         """Creates a clickable header tile. has_aq=True for Sensor HW 2.0 nodes."""
         frame = ctk.CTkFrame(self.header, fg_color="#252525", corner_radius=10)
-        if not self.sidebar_visible:
-            frame.pack(side="top", padx=4, pady=2, fill="x")
-        else:
+        if self.sidebar_visible:
             frame.pack(side="left", padx=5, pady=5, fill="both", expand=True)
         frame.configure(cursor="hand2")
 
@@ -594,6 +600,8 @@ class WeatherApp(ctk.CTk):
             }
         }
         self.create_sensor_card(nid, has_pressure, has_aq=has_aq)
+        if not self.sidebar_visible:
+            self._repack_header("vertical")
         self.temp_lines[nid], = self.ax_t.plot([], [], color=SENSOR_COLORS.get(nid),
                                                 label=self.sensor_names.get(nid, f"Node {nid}"),
                                                 linewidth=1.5)

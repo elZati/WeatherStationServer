@@ -62,6 +62,7 @@
     <div id="charts-container">
         <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
         <div class="chart-wrap"><canvas id="chart-hum"></canvas></div>
+        <div class="chart-wrap" id="chart-eco2-wrap" hidden><canvas id="chart-eco2"></canvas></div>
     </div>
 
     <!-- Stats table -->
@@ -99,6 +100,8 @@ const DEFAULT_NAMES = { 1:'Outdoor', 2:'Indoor',  3:'Garden',  4:'Garage',  5:'A
 const PRESSURE_SENTINEL = 33.33;
 const BATT_CRITICAL     = 2.6;
 const AUTO_REFRESH_MS   = 60000;
+const AQI_LABELS = { 1:'Excellent', 2:'Good', 3:'Moderate', 4:'Poor', 5:'Unhealthy' };
+const AQI_COLORS = { 1:'#00c04b',   2:'#88c040', 3:'#ffaa00', 4:'#ff6600', 5:'#ff2222' };
 const BLITZ_SERVERS = ['wss://ws1.blitzortung.org/', 'wss://ws3.blitzortung.org/', 'wss://ws7.blitzortung.org/'];
 
 const WMO = {
@@ -120,7 +123,7 @@ let wxLocation  = localStorage.getItem('wxLocation') || 'Tampere';
 let alertRadius = parseInt(localStorage.getItem('alertRadius') || '100');
 let hiddenNodes  = new Set();
 let latestData   = {};
-let tempChart, humChart;
+let tempChart, humChart, eco2Chart;
 let forecastLat  = null, forecastLon = null;
 let recentStrikes = [];
 let blitzWs = null, blitzWsIdx = 0;
@@ -181,6 +184,12 @@ function initCharts() {
         type: 'line', data: { datasets: [] },
         options: humOpts
     });
+    const eco2Opts = makeChartOptions('eCO2 (ppm)');
+    eco2Opts.scales.y.min = 400;
+    eco2Chart = new Chart(document.getElementById('chart-eco2'), {
+        type: 'line', data: { datasets: [] },
+        options: eco2Opts
+    });
 }
 
 // ============================================================
@@ -214,6 +223,17 @@ function renderNodeCards() {
         const hasPress = Math.abs(parseFloat(d.press) - PRESSURE_SENTINEL) > 1.0;
         const ago    = timeSince(d.timestamp);
 
+        const hasAQ = d.eco2 != null;
+        const aqi   = hasAQ ? parseInt(d.aqi)  : 0;
+        const eco2  = hasAQ ? parseInt(d.eco2) : 0;
+        const tvoc  = hasAQ ? parseInt(d.tvoc) : 0;
+        const aqiLabel = AQI_LABELS[aqi] || (aqi === 0 ? 'Warming up' : '?');
+        const aqiColor = AQI_COLORS[aqi] || '#555555';
+
+        const battStr = battV <= 0
+            ? '<div class="card-batt">USB Pwr</div>'
+            : `<div class="card-batt${battV < BATT_CRITICAL ? ' batt-low' : ''}">Batt: ${battV.toFixed(2)} V</div>`;
+
         const card = document.createElement('div');
         card.className = 'node-card card' + (hidden ? ' dimmed' : '');
         card.title = hidden ? 'Click to show on chart' : 'Click to hide from chart';
@@ -222,7 +242,9 @@ function renderNodeCards() {
             `<div class="card-temp">${parseFloat(d.temp).toFixed(1)}&deg;C</div>` +
             (parseFloat(d.hum) >= 0 ? `<div class="card-hum">${parseFloat(d.hum).toFixed(0)}% RH</div>` : '') +
             (hasPress ? `<div class="card-press">${parseFloat(d.press).toFixed(0)} hPa</div>` : '') +
-            `<div class="card-batt${battV < BATT_CRITICAL ? ' batt-low' : ''}">Batt: ${battV.toFixed(2)} V</div>` +
+            (hasAQ ? `<div class="card-aqi" style="color:${aqiColor}">AQI ${aqi} ${aqiLabel}</div>` : '') +
+            (hasAQ ? `<div class="card-eco2">eCO&#8322;: ${eco2} ppm &nbsp; TVOC: ${tvoc} ppb</div>` : '') +
+            battStr +
             `<div class="card-tx">TX: ${ago}</div>`;
         card.addEventListener('click', () => toggleNode(id));
         container.appendChild(card);
@@ -233,7 +255,7 @@ function renderNodeCards() {
 // RENDERING — CHARTS
 // ============================================================
 function renderCharts(seriesData) {
-    const tempDs = [], humDs = [];
+    const tempDs = [], humDs = [], eco2Ds = [];
     Object.keys(seriesData).map(Number).sort().forEach(id => {
         if (hiddenNodes.has(id)) return;
         const readings = seriesData[id];
@@ -247,9 +269,16 @@ function renderCharts(seriesData) {
             data: readings.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.temp })) });
         humDs.push({ ...base, label: name,
             data: readings.filter(r => parseFloat(r.hum) >= 0).map(r => ({ x: r.ts.replace(' ', 'T'), y: r.hum })) });
+        const eco2Rows = readings.filter(r => r.eco2 != null && r.eco2 > 0);
+        if (eco2Rows.length) {
+            eco2Ds.push({ ...base, label: name,
+                data: eco2Rows.map(r => ({ x: r.ts.replace(' ', 'T'), y: r.eco2 })) });
+        }
     });
     tempChart.data.datasets = tempDs; tempChart.update('none');
     humChart.data.datasets  = humDs;  humChart.update('none');
+    eco2Chart.data.datasets = eco2Ds; eco2Chart.update('none');
+    document.getElementById('chart-eco2-wrap').hidden = eco2Ds.length === 0;
 }
 
 // ============================================================

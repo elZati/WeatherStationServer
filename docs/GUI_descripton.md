@@ -10,8 +10,9 @@ The GEMINI Weather Station is a multi-tier IoT architecture. It collects environ
 
 | Stage | Component | Detail |
 |-------|-----------|--------|
-| Source | Arduino nodes | Sleep via WDT (8s cycles × multiplier). Wake, read HTU21D + optional BMP180, pack into 20-byte struct, transmit via nRF24L01. |
-| Bridge | C++ server (`Server_v15.cpp`) | Receives packets, updates `live_data.json`, sends ACK sleep command back, uploads to remote DB every 5 min. |
+| Source (HW 1.x) | ATmega Pro Mini nodes | Sleep via WDT (8s × multiplier). Wake, read HTU21D + optional BMP180, transmit **20-byte** struct via nRF24L01. |
+| Source (HW 2.0) | ESP32-C3 SuperMini nodes | Deep-sleep (timer-wakeup). Wake, read BME280 + ENS160, transmit **25-byte** struct via nRF24L01. |
+| Bridge | C++ server (`Server_v15.cpp`) | Detects payload size (20 vs 25 bytes). Updates `live_data.json`, sends ACK sleep command, uploads to remote DB every 15 min. |
 | Interface | Python GUI (`gui/gui_v19.py`) | Reads `live_data.json` every 2s, renders sensor cards and live graphs. |
 | Web | PHP + Chart.js (`saa/`) | Reads remote MySQL DB (`node_readings` table), shows historical charts and per-node cards. |
 
@@ -44,7 +45,8 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 
 ### A. Sensor Cards
 - Dynamically created when a node first checks in.
-- Show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend (nodes with BMP180), time since last TX.
+- HW 1.x show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend (nodes with BMP180), TX age.
+- HW 2.0 additionally show: AQI level (colour-coded 1–5 from Excellent to Unhealthy), eCO2 (ppm), TVOC (ppb). Battery shows "USB Pwr" when `batt=0`.
 - Click a card to toggle that node's line on/off in the graph.
 - Cards auto-hide after timeout (longest sleep setting × 3, minimum 60s) and reappear when data resumes.
 - Font sizes switch between `CARD_FONTS_NORMAL` and `CARD_FONTS_FULL` on fullscreen toggle.
@@ -95,5 +97,6 @@ The GUI keeps `previous_values[nid]` (last seen temperature). The `last_packet_t
 | No cards appear | `cat live_data.json` — empty means C++ server isn't writing |
 | Cards keep disappearing | Timeout too short; sleep multiplier × 3 < actual sleep interval |
 | Pressure shows `----` | Node doesn't have BMP180, or is sending sentinel `33.33` |
+| AQI shows "—" (warming up) | ENS160 normal for first ~1h after power-on; values stabilise over time |
 | Forecast not updating | Check internet on Pi; location name valid for Open-Meteo geocoding API |
 | Sleep command not reaching node | Check `config.txt` exists; verify ACK payload in serial monitor |

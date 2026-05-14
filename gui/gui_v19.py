@@ -35,6 +35,7 @@ CARD_FONTS_NORMAL = {
     'batt':  ("Arial", 10),
     'press': ("Arial", 10),
     'trend': ("Arial",  9),
+    'aq':    ("Arial",  9),
     'tx':    ("Arial", 10),
 }
 CARD_FONTS_FULL = {
@@ -43,6 +44,7 @@ CARD_FONTS_FULL = {
     'batt':  ("Arial", 13),
     'press': ("Arial", 13),
     'trend': ("Arial", 12),
+    'aq':    ("Arial", 12),
     'tx':    ("Arial", 12),
 }
 
@@ -267,6 +269,17 @@ class WeatherApp(ctk.CTk):
         if cape >= 100:  return ('⚡ Low',       '#ffaa00')
         return None
 
+    @staticmethod
+    def _aqi_label(aqi):
+        return {
+            0: ('AQI: —',          '#555555'),
+            1: ('AQI 1 Excellent',  '#00c04b'),
+            2: ('AQI 2 Good',       '#88c040'),
+            3: ('AQI 3 Moderate',   '#ffaa00'),
+            4: ('AQI 4 Poor',       '#ff6600'),
+            5: ('AQI 5 Unhealthy',  '#ff2222'),
+        }.get(aqi, ('AQI ?', '#888888'))
+
     def _update_weather_card(self):
         if not self.weather_data:
             return
@@ -346,8 +359,8 @@ class WeatherApp(ctk.CTk):
     # SENSOR CARDS
     # --------------------------------------------------------------------------
 
-    def create_sensor_card(self, nid, has_pressure):
-        """Creates a clickable header tile. Layout differs for pressure-capable nodes."""
+    def create_sensor_card(self, nid, has_pressure, has_aq=False):
+        """Creates a clickable header tile. has_aq=True for Sensor HW 2.0 nodes."""
         frame = ctk.CTkFrame(self.header, fg_color="#252525", corner_radius=10)
         if not self.sidebar_visible:
             frame.pack(side="top", padx=4, pady=2, fill="x")
@@ -372,20 +385,30 @@ class WeatherApp(ctk.CTk):
             trend_lbl = ctk.CTkLabel(frame, text="Stable", font=fonts['trend'], text_color="#aaaaaa")
             trend_lbl.pack()
 
+        aqi_lbl, eco2_lbl = None, None
+        if has_aq:
+            aqi_lbl  = ctk.CTkLabel(frame, text="AQI: —", font=fonts['aq'], text_color="#555555")
+            aqi_lbl.pack()
+            eco2_lbl = ctk.CTkLabel(frame, text="eCO2: —", font=fonts['aq'], text_color="#777777")
+            eco2_lbl.pack()
+
         tx_lbl = ctk.CTkLabel(frame, text="TX: --", font=fonts['tx'], text_color="#888888")
         tx_lbl.pack(pady=(0, 2))
 
         clickable = [frame, name_lbl, val_lbl, batt_lbl, tx_lbl]
         if press_lbl: clickable.append(press_lbl)
         if trend_lbl: clickable.append(trend_lbl)
+        if aqi_lbl:   clickable.append(aqi_lbl)
+        if eco2_lbl:  clickable.append(eco2_lbl)
         for widget in clickable:
             widget.bind("<Button-1>", lambda _, n=nid: self.toggle_node_graph(n))
 
         self.node_widgets[nid] = {
             'val': val_lbl, 'batt': batt_lbl, 'tx': tx_lbl,
-            'frame': frame,  'name_lbl': name_lbl,
+            'frame': frame, 'name_lbl': name_lbl,
             'press_lbl': press_lbl, 'trend_lbl': trend_lbl,
-            'has_pressure': has_pressure,
+            'aqi_lbl': aqi_lbl, 'eco2_lbl': eco2_lbl,
+            'has_pressure': has_pressure, 'has_aq': has_aq,
         }
         self.create_dynamic_node_slider(nid)
 
@@ -410,6 +433,10 @@ class WeatherApp(ctk.CTk):
             w['press_lbl'].configure(text_color="#555555" if dimmed else "white")
         if w.get('trend_lbl'):
             w['trend_lbl'].configure(text_color="#555555" if dimmed else "#aaaaaa")
+        if w.get('aqi_lbl'):
+            w['aqi_lbl'].configure(text_color="#555555")
+        if w.get('eco2_lbl'):
+            w['eco2_lbl'].configure(text_color="#555555" if dimmed else "#777777")
 
     def _set_all_card_fonts(self, fullscreen):
         fonts = CARD_FONTS_FULL if fullscreen else CARD_FONTS_NORMAL
@@ -422,6 +449,10 @@ class WeatherApp(ctk.CTk):
                 w['press_lbl'].configure(font=fonts['press'])
             if w.get('trend_lbl'):
                 w['trend_lbl'].configure(font=fonts['trend'])
+            if w.get('aqi_lbl'):
+                w['aqi_lbl'].configure(font=fonts['aq'])
+            if w.get('eco2_lbl'):
+                w['eco2_lbl'].configure(font=fonts['aq'])
 
     # --------------------------------------------------------------------------
     # PER-NODE SLEEP SLIDERS + RENAME
@@ -516,7 +547,7 @@ class WeatherApp(ctk.CTk):
     # DATA LAYER
     # --------------------------------------------------------------------------
 
-    def _init_node(self, nid, now_unix, initial_temp, initial_press):
+    def _init_node(self, nid, now_unix, initial_temp, initial_press, has_aq=False):
         has_pressure = abs(initial_press - PRESSURE_SENTINEL) > 1.0
         raw_maxlen   = WINDOW_CONFIG['15min']['maxlen']
         self.data_store[nid] = {
@@ -540,7 +571,7 @@ class WeatherApp(ctk.CTk):
                 for key, cfg in WINDOW_CONFIG.items() if cfg['bucket_sec'] is not None
             }
         }
-        self.create_sensor_card(nid, has_pressure)
+        self.create_sensor_card(nid, has_pressure, has_aq=has_aq)
         self.temp_lines[nid], = self.ax_t.plot([], [], color=SENSOR_COLORS.get(nid),
                                                 label=self.sensor_names.get(nid, f"Node {nid}"),
                                                 linewidth=1.5)
@@ -625,7 +656,8 @@ class WeatherApp(ctk.CTk):
                     current_press = entry.get('press', PRESSURE_SENTINEL)
 
                     if nid not in self.data_store:
-                        self._init_node(nid, now_unix, current_temp, current_press)
+                        self._init_node(nid, now_unix, current_temp, current_press,
+                                        has_aq='eco2' in entry)
 
                     if current_temp != self.previous_values.get(nid):
                         self.last_packet_time[nid] = now_unix
@@ -639,10 +671,22 @@ class WeatherApp(ctk.CTk):
 
                     self.node_widgets[nid]['val'].configure(text=f"{current_temp:.1f}°C")
                     bv = entry.get('batt', 0)
-                    self.node_widgets[nid]['batt'].configure(
-                        text=f"Batt: {bv:.2f}V",
-                        text_color="#ff4444" if bv < BATT_CRITICAL else "white"
-                    )
+                    if bv <= 0:
+                        self.node_widgets[nid]['batt'].configure(text="USB Pwr", text_color="white")
+                    else:
+                        self.node_widgets[nid]['batt'].configure(
+                            text=f"Batt: {bv:.2f}V",
+                            text_color="#ff4444" if bv < BATT_CRITICAL else "white"
+                        )
+
+                    if self.node_widgets[nid].get('has_aq') and 'eco2' in entry:
+                        aqi_text, aqi_color = self._aqi_label(entry.get('aqi', 0))
+                        self.node_widgets[nid]['aqi_lbl'].configure(
+                            text=aqi_text, text_color=aqi_color
+                        )
+                        self.node_widgets[nid]['eco2_lbl'].configure(
+                            text=f"eCO2:{entry.get('eco2',0)} TVOC:{entry.get('tvoc',0)}ppb"
+                        )
 
                     if self.node_widgets[nid].get('has_pressure'):
                         valid_press = abs(current_press - PRESSURE_SENTINEL) > 1.0

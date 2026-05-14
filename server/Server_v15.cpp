@@ -1,103 +1,114 @@
 /*
  * =========================================================================
- * GEMINI SERVER - RASPBERRY PI (v13.3 - DATA ALIGNMENT FIX)
+ * GEMINI SERVER - RASPBERRY PI (v15.0 - HW 2.0 AIR QUALITY SUPPORT)
  * -------------------------------------------------------------------------
- * Target: Fixes negative/weird readings (Data Misalignment) and 
- * ensures ACK payloads (Sleep Timers) flush correctly.
- * * * KEY ARCHITECTURAL FIXES:
- * 1. #pragma pack(1): Forces the Pi to treat the struct exactly like the 
- * Arduino does, preventing memory "padding" that causes negative numbers.
- * 2. radio.flush_tx(): Clears the hardware queue so new sleep settings 
- * replace old ones immediately instead of getting stuck.
- * 3. Pre-emptive Loading: Pipes are primed with ACK data before listening.
+ * Changes from v13.3:
+ *  - Batch upload (one POST per 15-min cycle instead of per-node GET)
+ *  - Sensor HW 2.0 support: 25-byte SensorPayloadV2 (eCO2, TVOC, AQI)
+ *    Legacy 20-byte nodes continue to work with no changes required.
+ *    The server distinguishes payload version by dynamic payload size.
  * =========================================================================
  */
 
 #include <cstdlib>
+#include <cstdint>
 #include <iostream>
 #include <unistd.h>
 #include <ctime>
 #include <stdio.h>
-#include <cstring> 
+#include <cstring>
 #include <curl/curl.h>
 #include "RF24.h"
 
 using namespace std;
 
 // --- System Definitions ---
-#define NODE_UPLOAD_DELAY (1000*60*15) // Time between web database uploads
-#define NODE_PRINTOUT_DELAY 2000      // Time between terminal refreshes
-#define clear() printf("\033[H\033[J") // Terminal escape code to clear screen
+#define NODE_UPLOAD_DELAY  (1000*60*15)  // Web upload period (ms)
+#define NODE_PRINTOUT_DELAY 2000         // Terminal refresh period (ms)
+#define clear() printf("\033[H\033[J")
 
-/* * PACKED STRUCT (20 BYTES)
- * ------------------------
- * We use #pragma pack(1) to tell the Pi's ARM processor NOT to add 
- * extra "padding" bytes between the int and the floats. Without this,
- * the Pi might try to make the struct 24 bytes, causing Node 3's
- * data to look like gibberish or negative numbers.
- */
+// =========================================================================
+// PAYLOAD STRUCTS
+// IMPORTANT: keep in sync with Arduino firmware structs.
+// =========================================================================
 #pragma pack(push, 1)
+
+// Legacy 20-byte payload (all pre-HW2 nodes)
 struct SensorPayload {
-    int32_t nodeID;    // 4 bytes: ID of the sender (1, 2, or 3) [cite: 1]
-    float sensor1;     // 4 bytes: Temperature (HTU21D) 
-    float sensor2;     // 4 bytes: Humidity (HTU21D) 
-    float sensor3;     // 4 bytes: Pressure (BMP180) [cite: 6]
-    float sensor4;     // 4 bytes: Battery Voltage [cite: 6]
+    int32_t nodeID;
+    float   sensor1;   // temperature
+    float   sensor2;   // humidity
+    float   sensor3;   // pressure
+    float   sensor4;   // battery voltage
 };
+
+// HW 2.0 extended 25-byte payload (ESP32-C3 + BME280 + ENS160)
+struct SensorPayloadV2 {
+    int32_t  nodeID;
+    float    sensor1;  // temperature
+    float    sensor2;  // humidity
+    float    sensor3;  // pressure
+    float    sensor4;  // 0.0 (USB powered)
+    uint16_t eco2;     // eCO2 ppm
+    uint16_t tvoc;     // TVOC ppb
+    uint8_t  aqi;      // AQI 1–5  (0 = warming up)
+};
+
 #pragma pack(pop)
 
-// --- Global Variables ---
-RF24 radio(22, 0);          // CE on Pin 22, CSN on Pin 0
-SensorPayload nodes[6];     // Data storage for nodes 1 through 5
-time_t last_seen[6] = {0};  // Tracks when each node last "checked in"
-float sleep_cmds[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // Default multipliers
-
-unsigned long last_upload = 0;
-unsigned long last_printout = 0;
-
-// --- v13 Hardware Addressing ---
-// These addresses must match the Arduino baseAddress + NODE_ID[cite: 4].
-const uint64_t pipes[6] = {
-    0xABCDABCD00LL, // Pipe 0 (System Reserved)
-    0xABCDABCD01LL, // Node 1
-    0xABCDABCD02LL, // Node 2
-    0xABCDABCD03LL, // Node 3 (The node giving "weird" results)
-    0xABCDABCD04LL, // Node 4
-    0xABCDABCD05LL  // Node 5
+// Extra fields only present for HW 2.0 nodes
+struct NodeExtras {
+    uint16_t eco2  = 0;
+    uint16_t tvoc  = 0;
+    uint8_t  aqi   = 0;
+    bool     is_v2 = false;
 };
 
-/*
- * updateConfigs(): Monitors config.txt for sleep changes from the GUI.
- * If a change is found, it flushes the hardware buffer to prevent 
- * settings from getting "stuck".
- */
+// --- Global State ---
+RF24        radio(22, 0);
+SensorPayload nodes[6];
+NodeExtras    extras[6];
+time_t        last_seen[6]  = {0};
+float         sleep_cmds[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
+unsigned long last_upload   = 0;
+unsigned long last_printout = 0;
+
+const uint64_t pipes[6] = {
+    0xABCDABCD00LL,  // Pipe 0 (reserved)
+    0xABCDABCD01LL,  // Node 1
+    0xABCDABCD02LL,  // Node 2
+    0xABCDABCD03LL,  // Node 3
+    0xABCDABCD04LL,  // Node 4
+    0xABCDABCD05LL   // Node 5
+};
+
+// =========================================================================
+// updateConfigs(): Watches config.txt for sleep-timer changes from the GUI.
+// =========================================================================
 void updateConfigs() {
     static uint32_t last_check = 0;
     if (__millis() - last_check < 2000) return;
     last_check = __millis();
-    
+
     FILE *f = fopen("../config.txt", "r");
     if (f) {
         float new_cmds[6];
-        // Read the five expected values from the config file
-        if (fscanf(f, "%f %f %f %f %f", &new_cmds[1], &new_cmds[2], &new_cmds[3], &new_cmds[4], &new_cmds[5]) == 5) {
-            
+        if (fscanf(f, "%f %f %f %f %f",
+                   &new_cmds[1], &new_cmds[2], &new_cmds[3],
+                   &new_cmds[4], &new_cmds[5]) == 5) {
             bool changed = false;
-            for(int i=1; i<=5; i++) {
-                if(new_cmds[i] != sleep_cmds[i]) {
+            for (int i = 1; i <= 5; i++) {
+                if (new_cmds[i] != sleep_cmds[i]) {
                     sleep_cmds[i] = new_cmds[i];
                     changed = true;
                 }
             }
-
-            // If a slider was moved in the GUI, reset the Radio's ACK queue
             if (changed) {
-                radio.stopListening(); 
-                radio.flush_tx();      // Remove stale ACK packets from hardware
-                for (int i = 1; i <= 5; i++) {
-                    // Reload fresh settings into the response buffer [cite: 24]
+                radio.stopListening();
+                radio.flush_tx();
+                for (int i = 1; i <= 5; i++)
                     radio.writeAckPayload(i, &sleep_cmds[i], sizeof(float));
-                }
                 radio.startListening();
                 printf(">>> CONFIG UPDATE: Radio buffers flushed and re-synced.\n");
             }
@@ -106,50 +117,73 @@ void updateConfigs() {
     }
 }
 
-/*
- * saveForUI(): Writes the most recent data to JSON for the Web interface.
- */
+// =========================================================================
+// saveForUI(): Writes live_data.json for the Pi GUI.
+//   HW 2.0 nodes include eco2/tvoc/aqi fields; legacy nodes do not.
+// =========================================================================
 void saveForUI() {
     FILE *f = fopen("../live_data.json", "w");
     if (!f) return;
     fprintf(f, "[\n");
     bool first = true;
     for (int i = 1; i <= 5; i++) {
-        if (last_seen[i] > 0) {
-            if (!first) fprintf(f, ",\n");
-            fprintf(f, "{\"id\": %d, \"temp\": %.2f, \"hum\": %.2f, \"press\": %.2f, \"batt\": %.2f, \"last_seen\": %lld}",
-                    i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4, (long long)last_seen[i]);
-            first = false;
+        if (last_seen[i] == 0) continue;
+        if (!first) fprintf(f, ",\n");
+        if (extras[i].is_v2) {
+            fprintf(f, "{\"id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,"
+                       "\"batt\":%.2f,\"eco2\":%u,\"tvoc\":%u,\"aqi\":%u,"
+                       "\"last_seen\":%lld}",
+                    i, nodes[i].sensor1, nodes[i].sensor2,
+                    nodes[i].sensor3, nodes[i].sensor4,
+                    extras[i].eco2, extras[i].tvoc, extras[i].aqi,
+                    (long long)last_seen[i]);
+        } else {
+            fprintf(f, "{\"id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,"
+                       "\"batt\":%.2f,\"last_seen\":%lld}",
+                    i, nodes[i].sensor1, nodes[i].sensor2,
+                    nodes[i].sensor3, nodes[i].sensor4,
+                    (long long)last_seen[i]);
         }
+        first = false;
     }
     fprintf(f, "\n]");
     fclose(f);
 }
 
-/*
- * printNodes(): Display the sensor dashboard in the Linux terminal.
- */
+// =========================================================================
+// printNodes(): Terminal dashboard.
+// =========================================================================
 void printNodes() {
     clear();
     printf("===== SÄÄ-SERVER 1.0 =====\n");
-    printf("Listening on Pipes 1-5 | Data Pack: 20-Bytes\n");
+    printf("Listening on Pipes 1-5 | V1=20B  V2=25B\n");
     printf("--------------------------------------------------\n");
     for (int i = 1; i <= 5; i++) {
         if (last_seen[i] > 0) {
             tm *ltm = localtime(&last_seen[i]);
-            printf("NODE %d [%02d:%02d:%02d] | T: %5.1fC | H: %5.1f%% | P: %4.0f | B: %1.2fV | CMD: %.0f\n", 
-                    i, ltm->tm_hour, ltm->tm_min, ltm->tm_sec,
-                    nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4, sleep_cmds[i]);
+            if (extras[i].is_v2) {
+                printf("NODE %d [%02d:%02d:%02d] HW2 | T:%5.1fC H:%5.1f%% P:%4.0f "
+                       "| eCO2:%4uppm TVOC:%4uppb AQI:%u | CMD:%.0f\n",
+                       i, ltm->tm_hour, ltm->tm_min, ltm->tm_sec,
+                       nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3,
+                       extras[i].eco2, extras[i].tvoc, extras[i].aqi,
+                       sleep_cmds[i]);
+            } else {
+                printf("NODE %d [%02d:%02d:%02d]     | T:%5.1fC H:%5.1f%% P:%4.0f "
+                       "| B:%1.2fV | CMD:%.0f\n",
+                       i, ltm->tm_hour, ltm->tm_min, ltm->tm_sec,
+                       nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3,
+                       nodes[i].sensor4, sleep_cmds[i]);
+            }
         } else {
             printf("NODE %d | Offline\n", i);
         }
     }
 }
 
-/*
- * http_post_json(): Fire-and-forget HTTP POST with a JSON body.
- * Timeout 10s so internet outages don't block the radio loop.
- */
+// =========================================================================
+// http_post_json(): Fire-and-forget HTTP POST with JSON body.
+// =========================================================================
 static size_t discard_cb(void *, size_t size, size_t n, void *) { return size * n; }
 
 static void http_post_json(const char *url, const char *body) {
@@ -167,20 +201,31 @@ static void http_post_json(const char *url, const char *body) {
     curl_easy_cleanup(curl);
 }
 
-/*
- * uploadData(): Batch all active nodes into one JSON POST, reducing the
- * request count from N-per-cycle to 1-per-cycle.
- */
+// =========================================================================
+// uploadData(): Batches all active nodes into one JSON POST.
+//   HW 2.0 nodes include eco2/tvoc/aqi; legacy nodes do not.
+// =========================================================================
 void uploadData() {
-    char body[512] = "[";
+    char body[1024] = "[";
     bool first = true;
     for (int i = 1; i <= 5; i++) {
         if (last_seen[i] == 0) continue;
-        char entry[128];
-        snprintf(entry, sizeof(entry),
-            "%s{\"node_id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,\"batt\":%.2f}",
-            first ? "" : ",",
-            i, nodes[i].sensor1, nodes[i].sensor2, nodes[i].sensor3, nodes[i].sensor4);
+        char entry[192];
+        if (extras[i].is_v2) {
+            snprintf(entry, sizeof(entry),
+                "%s{\"node_id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,"
+                "\"batt\":%.2f,\"eco2\":%u,\"tvoc\":%u,\"aqi\":%u}",
+                first ? "" : ",",
+                i, nodes[i].sensor1, nodes[i].sensor2,
+                nodes[i].sensor3, nodes[i].sensor4,
+                extras[i].eco2, extras[i].tvoc, extras[i].aqi);
+        } else {
+            snprintf(entry, sizeof(entry),
+                "%s{\"node_id\":%d,\"temp\":%.2f,\"hum\":%.2f,\"press\":%.2f,\"batt\":%.2f}",
+                first ? "" : ",",
+                i, nodes[i].sensor1, nodes[i].sensor2,
+                nodes[i].sensor3, nodes[i].sensor4);
+        }
         strncat(body, entry, sizeof(body) - strlen(body) - 1);
         first = false;
     }
@@ -189,76 +234,95 @@ void uploadData() {
         http_post_json("http://www.rxtx-designs.com/saa/upload_values.php", body);
 }
 
+// =========================================================================
+// main()
+// =========================================================================
 int main(int argc, char** argv) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    // Initialize Radio
     if (!radio.begin()) {
         printf("CRITICAL: SPI Radio connection failed.\n");
         return 1;
     }
 
-    // Configure Radio to match Arduinos exactly [cite: 15]
     radio.setPALevel(RF24_PA_HIGH);
     radio.setDataRate(RF24_250KBPS);
-    radio.setCRCLength(RF24_CRC_16); 
-    radio.enableAckPayload();      // Enable "Talk-back" feature
-    radio.enableDynamicPayloads(); // Required for varying ACK data
+    radio.setCRCLength(RF24_CRC_16);
+    radio.enableAckPayload();
+    radio.enableDynamicPayloads();
 
     radio.stopListening();
-    radio.closeReadingPipe(0); // Pipe 0 used for management
+    radio.closeReadingPipe(0);
 
-    // Open reading pipes for Nodes 1 through 5
-    for (int i = 1; i <= 5; i++) {
+    for (int i = 1; i <= 5; i++)
         radio.openReadingPipe(i, pipes[i]);
-    }
 
-    // Initial config load and buffer prime
     updateConfigs();
-    for (int i = 1; i <= 5; i++) {
+    for (int i = 1; i <= 5; i++)
         radio.writeAckPayload(i, &sleep_cmds[i], sizeof(float));
-    }
 
     radio.startListening();
     last_upload = __millis();
 
     while (1) {
         updateConfigs();
-        
+
         uint8_t pipeNum;
         if (radio.available(&pipeNum)) {
-            SensorPayload incoming;
-            // Read exactly 20 bytes from the radio [cite: 23]
-            radio.read(&incoming, sizeof(incoming));
-            
-            int id = incoming.nodeID; // Retrieve ID from the first 4 bytes 
-            
-            if (id >= 1 && id <= 5) {
-                // Update local memory with fresh data
-                nodes[id] = incoming;
-                last_seen[id] = time(NULL);
-                
-                // Immediately reload the ACK for this specific pipe 
-                // so the node hears the Pi on the NEXT wake cycle [cite: 24]
-                radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
-                
-                saveForUI(); // Refresh the web GUI JSON file
+            uint8_t sz = radio.getDynamicPayloadSize();
+
+            if (sz == sizeof(SensorPayload)) {
+                // ---- Legacy HW 1.x node (20 bytes) ----
+                SensorPayload incoming;
+                radio.read(&incoming, sizeof(incoming));
+                int id = incoming.nodeID;
+                if (id >= 1 && id <= 5) {
+                    nodes[id]        = incoming;
+                    extras[id].is_v2 = false;
+                    last_seen[id]    = time(NULL);
+                    radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+                    saveForUI();
+                }
+
+            } else if (sz == sizeof(SensorPayloadV2)) {
+                // ---- Sensor HW 2.0 node (25 bytes) ----
+                SensorPayloadV2 incoming;
+                radio.read(&incoming, sizeof(incoming));
+                int id = incoming.nodeID;
+                if (id >= 1 && id <= 5) {
+                    // Copy common fields into legacy struct for uniform storage
+                    nodes[id].nodeID  = incoming.nodeID;
+                    nodes[id].sensor1 = incoming.sensor1;
+                    nodes[id].sensor2 = incoming.sensor2;
+                    nodes[id].sensor3 = incoming.sensor3;
+                    nodes[id].sensor4 = incoming.sensor4;
+                    extras[id].eco2   = incoming.eco2;
+                    extras[id].tvoc   = incoming.tvoc;
+                    extras[id].aqi    = incoming.aqi;
+                    extras[id].is_v2  = true;
+                    last_seen[id]     = time(NULL);
+                    radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+                    saveForUI();
+                }
+
+            } else {
+                // Unknown payload size — drain the buffer to avoid stalls
+                uint8_t buf[32];
+                radio.read(buf, sz < 32 ? sz : 32);
             }
         }
 
-        // Dashboard Refresh
         if (__millis() - last_printout > NODE_PRINTOUT_DELAY) {
             printNodes();
             last_printout = __millis();
         }
 
-        // Web Upload
         if (__millis() - last_upload > NODE_UPLOAD_DELAY) {
             uploadData();
             last_upload = __millis();
         }
 
-        usleep(1000); // Prevent CPU from pinning at 100%
+        usleep(1000);
     }
     return 0;
 }

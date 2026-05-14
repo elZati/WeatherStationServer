@@ -22,8 +22,19 @@ Table: `node_readings` (created by running `migrate.sql` in phpMyAdmin).
 | `temp` | FLOAT | Temperature °C |
 | `hum` | FLOAT | Humidity %RH |
 | `press` | FLOAT | Pressure hPa (33.33 = no sensor) |
-| `batt` | FLOAT | Battery voltage V |
+| `batt` | FLOAT | Battery voltage V (0 = USB powered) |
+| `eco2` | SMALLINT UNSIGNED NULL | eCO2 ppm — HW 2.0 nodes only |
+| `tvoc` | SMALLINT UNSIGNED NULL | TVOC ppb — HW 2.0 nodes only |
+| `aqi` | TINYINT UNSIGNED NULL | AQI 1–5 — HW 2.0 nodes only |
 | `timestamp` | DATETIME | Auto-set on insert |
+
+**Migration for HW 2.0 support** — run once in phpMyAdmin:
+```sql
+ALTER TABLE node_readings
+    ADD COLUMN eco2 SMALLINT UNSIGNED DEFAULT NULL,
+    ADD COLUMN tvoc SMALLINT UNSIGNED DEFAULT NULL,
+    ADD COLUMN aqi  TINYINT UNSIGNED DEFAULT NULL;
+```
 
 ## API — datafetcher.php
 
@@ -31,9 +42,9 @@ All responses are JSON. `Content-Type: application/json`.
 
 | Action | Parameters | Returns |
 |--------|-----------|---------|
-| `action=latest` | — | Array of latest row per active node |
-| `action=series` | `from`, `to` (YYYY-MM-DD) | Object keyed by node_id; array of `{ts, temp, hum, press, batt}` |
-| `action=stats` | `from`, `to` | Object keyed by node_id; `{min_temp, max_temp, min_hum, max_hum, …}` |
+| `action=latest` | — | Array of latest row per active node; HW 2.0 nodes include `eco2`, `tvoc`, `aqi` |
+| `action=series` | `from`, `to` (YYYY-MM-DD) | Object keyed by node_id; array of `{ts, temp, hum, press, batt[, eco2, tvoc, aqi]}` |
+| `action=stats` | `from`, `to` | Object keyed by node_id; `{min_temp, max_temp, …[, min_eco2, max_eco2]}` |
 
 ## Data Upload — upload_values.php
 
@@ -45,10 +56,10 @@ Invalid or out-of-range `node_id` values are silently skipped. Returns `OK` on s
 
 ## Web Page Features (graph.html)
 
-- **Node cards**: one per active node, show temp/humidity/pressure/battery. Click to toggle chart line.
+- **Node cards**: one per active node; show temp/humidity/pressure/battery. HW 2.0 nodes also show AQI level (colour-coded 1–5) and eCO2/TVOC values. Battery shows "USB Pwr" when `batt=0`. Click to toggle chart line.
 - **Tomorrow's forecast**: Open-Meteo daily API, same as local GUI.
 - **Date range**: Today / 7 days / 30 days / custom date picker.
-- **Charts**: Chart.js 4 with `chartjs-adapter-date-fns`; temperature and humidity.
+- **Charts**: Chart.js 4 with `chartjs-adapter-date-fns`; temperature, humidity, and (when HW 2.0 data is present) eCO2.
 - **Stats table**: min/max temp and humidity per node for the selected range.
 - **Node renaming**: Settings panel (⚙ button); names stored in `localStorage`.
 - **Forecast location**: Configurable in settings; stored in `localStorage`.
@@ -73,6 +84,6 @@ The app works offline with the last-fetched sensor data shown until connectivity
 
 ## Deployment
 
-1. Run `migrate.sql` once in cPanel → phpMyAdmin → SQL tab.
+1. **First time (or adding HW 2.0 support)**: Run the ALTER TABLE migration above in cPanel → phpMyAdmin → SQL tab.
 2. Upload `graph.html`, `weather.css`, `datafetcher.php`, `upload_values.php` to `public_html/saa/`.
 3. Recompile and restart Pi server (`cd server && make && sudo ./Server`).

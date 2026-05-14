@@ -16,8 +16,10 @@ if ($conn->connect_errno) {
     exit;
 }
 
+// eco2/tvoc/aqi are NULL for legacy nodes that don't send these fields
 $stmt = $conn->prepare(
-    'INSERT INTO node_readings (node_id, temp, hum, press, batt) VALUES (?,?,?,?,?)'
+    'INSERT INTO node_readings (node_id, temp, hum, press, batt, eco2, tvoc, aqi)
+     VALUES (?,?,?,?,?,?,?,?)'
 );
 
 foreach ($nodes as $n) {
@@ -27,7 +29,10 @@ foreach ($nodes as $n) {
     $hum   = isset($n['hum'])   ? (float)$n['hum']   : null;
     $press = isset($n['press']) ? (float)$n['press'] : null;
     $batt  = isset($n['batt'])  ? (float)$n['batt']  : null;
-    $stmt->bind_param('idddd', $node_id, $temp, $hum, $press, $batt);
+    $eco2  = isset($n['eco2'])  ? (int)$n['eco2']    : null;
+    $tvoc  = isset($n['tvoc'])  ? (int)$n['tvoc']    : null;
+    $aqi   = isset($n['aqi'])   ? (int)$n['aqi']     : null;
+    $stmt->bind_param('iddddiii', $node_id, $temp, $hum, $press, $batt, $eco2, $tvoc, $aqi);
     $stmt->execute();
 }
 

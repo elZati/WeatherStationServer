@@ -95,6 +95,8 @@ body {
 .card-press { font-size: 12px; color: #888888; }
 .card-batt  { font-size: 12px; color: #666666; margin-top: 2px; }
 .card-batt.batt-low { color: #ff4444; font-weight: bold; }
+.card-aqi   { font-size: 12px; font-weight: bold; margin-top: 2px; }
+.card-eco2  { font-size: 11px; color: #777777; }
 .card-tx    { font-size: 11px; color: #444444; }
 
 /* ---- FORECAST CARD ---- */

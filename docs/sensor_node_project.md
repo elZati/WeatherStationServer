@@ -1,12 +1,33 @@
-# ESP32-C3 SuperMini — Wireless Environmental Sensor Node
+# ESP32-C3 SuperMini — Wireless Environmental Sensor Node (HW 2.0)
 ## Project Summary / Handoff Document
 
 ---
 
 ## Goal
-Battery-powered, wireless environmental sensor node on a breadboard.
-Reads temperature, humidity, pressure, eCO2, TVOC and air quality index,
+Wireless environmental sensor node on a custom PCB.
+Reads temperature, humidity, pressure, and optionally eCO2, TVOC and AQI,
 then transmits data wirelessly via the NRF24L01+PA radio module.
+
+---
+
+## Operating modes — auto-detected at boot by I2C scan
+
+| Sensors detected | Mode | Sleep strategy | sensor4 |
+|---|---|---|---|
+| BME280 only | **BATTERY** | ESP32 deep sleep (full reboot on wake) | 0.0 (no ADC circuit) |
+| BME280 + ENS160 | **USB** | `delay()` — MCU stays awake | 0.0 (USB powered) |
+
+### BATTERY mode
+- After each transmit cycle, calls `esp_deep_sleep_start()` — ESP32 fully powers down
+- On wake the MCU reboots into `setup()` (loop() is never used in this mode)
+- `sleep_multiplier` stored in `RTC_DATA_ATTR` so it survives deep sleep resets
+- Typical ESP32-C3 deep-sleep current: ~5 µA
+
+### USB mode
+- `delay()` between transmissions keeps MCU and I2C bus alive
+- ENS160 maintains its internal gas-sensor baseline continuously
+- ENS160 requires ~1 h warm-up — `aqi = 0` until baseline is stable
+- `sensor4 = 0.0` (USB powered, no battery circuit in schematic)
 
 ---
 
@@ -16,11 +37,11 @@ then transmits data wirelessly via the NRF24L01+PA radio module.
 |---|---|---|---|
 | ESP32-C3 SuperMini (HW-466AB) | Main MCU | — | — |
 | GY-BME/BMP280 | Temp / Humidity / Pressure | I2C | 0x76 |
-| ENS160 breakout | eCO2 / TVOC / AQI | I2C | 0x52 |
+| ENS160 breakout | eCO2 / TVOC / AQI (USB nodes only) | I2C | 0x52 |
 | NRF24L01+PA breakout | 2.4 GHz wireless TX | SPI | — |
 
-Power supply: external bench supply, 3.3V and 5V rails available.
-All active components run on 3.3V.
+Power supply: battery via J1 + MCP1700T-3302E LDO (battery nodes) or USB-C (USB nodes).
+All active components run on 3.3 V.
 
 ---
 

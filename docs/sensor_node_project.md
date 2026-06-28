@@ -37,8 +37,8 @@ USB-C faces left when seated on breadboard.
 | 4 | GPIO8 | ⚠ Onboard LED — do not use |
 | 5 | GPIO9 | ⚠ BOOT button — do not use |
 | 6 | GPIO10 | SPI SCK |
-| 7 | GPIO20 | Free (UART RX) |
-| 8 (bottom) | GPIO21 | Free (UART TX) |
+| 7 | GPIO20 | SW1 P1 — node ID bit 2 (value 4) |
+| 8 (bottom) | GPIO21 | SW1 P2 — node ID bit 1 (value 2) |
 
 ### Right side pins (top → bottom, USB-C at top):
 | Physical order | Pin | Project role |
@@ -47,7 +47,7 @@ USB-C faces left when seated on breadboard.
 | 2 | GND | Ground → GND rail |
 | 3 | 3.3V | Power → 3.3V rail ✓ DONE |
 | 4 | GPIO4 | I2C SDA |
-| 5 | GPIO3 | Free |
+| 5 | GPIO3 | SW1 P3 — node ID bit 0 (value 1) |
 | 6 | GPIO2 | ⚠ Strapping pin — avoid |
 | 7 | GPIO1 | NRF24 CSN |
 | 8 (bottom) | GPIO0 | NRF24 CE |
@@ -85,6 +85,26 @@ Check if your breakouts already have onboard pull-ups before adding external one
 | GPIO10 | SCK | SCK |
 | GPIO0 | CE | CE |
 | GPIO1 | CSN | CSN |
+
+### SW1 — DIP switch node ID selector
+SW1 (WS-DITV_A18117270905) sets NODE_ID at boot (active-low, firmware enables pull-ups).
+Other side of all three switches connects to GND.
+
+| Switch | GPIO | Bit | Value | Closed = adds |
+|---|---|---|---|---|
+| P1 | GPIO20 | bit 2 | 4 | yes |
+| P2 | GPIO21 | bit 1 | 2 | yes |
+| P3 | GPIO3  | bit 0 | 1 | yes |
+
+NODE_ID = sum of closed switch values. Valid range: 1–5.
+
+| NODE_ID | P1 | P2 | P3 |
+|---|---|---|---|
+| 1 | OFF | OFF | ON  |
+| 2 | OFF | ON  | OFF |
+| 3 | OFF | ON  | ON  |
+| 4 | ON  | OFF | OFF |
+| 5 | ON  | OFF | ON  |
 
 ### Mode / address strap wires (short jumpers, set once)
 | Pin | Connect to | Purpose |

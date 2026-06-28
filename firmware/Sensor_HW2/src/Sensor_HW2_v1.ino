@@ -33,11 +33,6 @@
 #include <RF24.h>
 
 // =========================================================================
-// NODE CONFIGURATION — set a unique ID (1–5) for each physical node
-// =========================================================================
-const int32_t NODE_ID = 4;
-
-// =========================================================================
 // HARDWARE PINS — matches sensor_node_project.md pinout for HW-466AB
 // =========================================================================
 #define I2C_SDA   4
@@ -47,6 +42,12 @@ const int32_t NODE_ID = 4;
 #define NRF_SCK  10
 #define NRF_MISO  6
 #define NRF_MOSI  7
+
+// DIP switch SW1 (active-low, internal pull-up): P1=GPIO20 (bit2), P2=GPIO21 (bit1), P3=GPIO3 (bit0)
+// NODE_ID = closed switches summed: P1=4, P2=2, P3=1. Valid range: 1–5.
+#define SW_P1    20   // bit 2, value 4
+#define SW_P2    21   // bit 1, value 2
+#define SW_P3     3   // bit 0, value 1
 
 // =========================================================================
 // 25-BYTE PAYLOAD (packed — server detects HW 2.0 by this exact size)
@@ -69,11 +70,12 @@ struct SensorPayloadV2 {
 // ADDRESSING — baseAddress + NODE_ID must match server pipes[]
 // =========================================================================
 const uint64_t BASE_ADDR = 0xABCDABCD00LL;
-const uint64_t MY_ADDR   = BASE_ADDR + NODE_ID;
 
 // =========================================================================
 // GLOBALS
 // =========================================================================
+int32_t  NODE_ID = 0;   // set at boot from DIP switch SW1
+uint64_t MY_ADDR = 0;
 SPIClass         spiNrf(FSPI);
 RF24             radio(NRF_CE, NRF_CSN);
 Adafruit_BME280  bme;
@@ -87,9 +89,24 @@ uint8_t  sleep_multiplier = 5;   // 5 × 8 s = 40 s default
 // SETUP — runs once on power-on
 // =========================================================================
 void setup() {
+    // ---- DIP switch: read NODE_ID before anything else ----
+    pinMode(SW_P1, INPUT_PULLUP);
+    pinMode(SW_P2, INPUT_PULLUP);
+    pinMode(SW_P3, INPUT_PULLUP);
+    delay(10);  // allow pull-ups to settle
+    NODE_ID = ((!digitalRead(SW_P1)) << 2) |
+              ((!digitalRead(SW_P2)) << 1) |
+              ((!digitalRead(SW_P3)) << 0);
+    MY_ADDR = BASE_ADDR + NODE_ID;
+
     Serial.begin(115200);
     delay(100);
     Serial.printf("\n=== NODE %d HW2.0 START ===\n", NODE_ID);
+
+    if (NODE_ID < 1 || NODE_ID > 5) {
+        Serial.printf("CRITICAL: Invalid NODE_ID=%d — set SW1 to 1–5 and reboot\n", NODE_ID);
+        while (1) delay(1000);
+    }
 
     // ---- I2C ----
     Wire.begin(I2C_SDA, I2C_SCL);

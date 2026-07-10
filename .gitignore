@@ -1,0 +1,11 @@
+# PlatformIO build cache and downloaded libraries
+.pio/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
+*.code-workspace

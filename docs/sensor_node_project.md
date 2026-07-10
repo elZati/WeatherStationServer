@@ -168,6 +168,19 @@ Bot row (left→right): SCK  MOSI MISO IRQ
 - [x] Step 3: ENS160 — add VCC, GND, SCL, SDA, CS strap, ADD strap
 - [x] Step 4: NRF24L01+PA — add VCC, GND, CE, CSN, SCK, MOSI, MISO + decoupling caps
 
+## Assembly order — IMPORTANT
+
+**SW1 DIP switch physically blocks the USB-C port once soldered.**
+Follow this order for every new board:
+
+1. Assemble board **without** SW1
+2. Flash firmware via USB-C with `NODE_ID` hardcoded (DIP reading disabled)
+3. Confirm WiFi connects and OTA/Telnet are reachable
+4. Solder SW1, set switches for desired NODE_ID
+5. Flash production firmware (DIP reading enabled) **via OTA** — `pio run -e ota -t upload`
+
+> ⚠ PCB revision needed: reposition SW1 so it does not block USB-C.
+
 ---
 
 ## Recommended libraries (Arduino / PlatformIO)
@@ -226,6 +239,40 @@ radio.write(&payload, sizeof(payload));
 
 ---
 
+## WiFi / OTA / Telnet (USB mode only)
+
+USB-mode nodes (BME280 + ENS160) run WiFi at boot for wireless firmware updates and remote monitoring. Battery-mode nodes skip WiFi entirely.
+
+| Feature | Detail |
+|---|---|
+| OTA hostname | `hw20-node4.local` |
+| OTA password | `kuningas` |
+| OTA upload command | `pio run -e ota -t upload` |
+| Telnet monitor | `telnet <ip> 23` |
+| IP shown at boot | Serial + first Telnet connection |
+
+The `[env:ota]` section in `platformio.ini` points to the board IP. Update it if DHCP reassigns the address, or reserve `ac:a7:04:c0:c2:b4` in the router for a stable IP.
+
+---
+
+## Diagnostic firmware
+
+`firmware/Sensor_HW2_debug/` — standalone diagnostic sketch for hardware bring-up and fault isolation.
+
+Tests run each cycle (8 s):
+- **I2C scan** — lists all detected devices
+- **BME280** — init + range-validated readings
+- **ENS160** — init + AQI/eCO2/TVOC readings
+- **NRF24** — SPI, isChipConnected(), TX attempt with ARC count + register dump
+
+Additional one-shot tests available in the source (not in default loop):
+- `testCEPin()` — toggles GPIO0 every 5 s for multimeter verification
+- `testNRF24_RX()` — listens on all 5 node pipes for 60 s to verify RX path
+
+Flash with: `pio run -t upload` from `firmware/Sensor_HW2_debug/`
+
+---
+
 ## Notes
 - Development environment: VS Code on Windows 11, SSH to Raspberry Pi 400,
   PlatformIO recommended over Arduino IDE for dependency management.
@@ -236,5 +283,5 @@ radio.write(&payload, sizeof(payload));
   LED and BOOT button respectively — never wire peripherals to these.
 - GPIO2 is a strapping pin; leaving it floating is fine, but don't pull it
   low at boot.
-- NRF24L01+PA antenna needs clear line of sight; keep away from metal objects
-  and other 2.4 GHz sources (WiFi, Bluetooth) during initial range testing.
+- NRF24 TX failure with ARC=15 and working RX indicates a defective module (TX output stage dead). Replace the module.
+- High-pitched noise from the board is coil whine from ceramic caps under ENS160 heater load — harmless.

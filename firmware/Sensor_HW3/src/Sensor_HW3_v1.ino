@@ -46,9 +46,9 @@
 #define SW_P4  5    // NODE_ID 4
 #define SW_P5  4    // NODE_ID 5
 
-// Battery voltage divider midpoint
-#define BATT_PIN      A0
-#define BATT_DIVIDER  2.0f   // (R1+R2)/R2 — verify from schematic
+// Bandgap calibration constant: 1100 mV * 1023 * 1000
+// Adjust if VCC reads wrong vs multimeter: constant = measured_VCC_mV * ADC_result
+#define BANDGAP_CAL  1125300UL
 
 // =========================================================================
 // NODE CONFIG — hardcoded until SW1 is soldered
@@ -102,10 +102,15 @@ int32_t readNodeId() {
 }
 
 // =========================================================================
-// BATTERY VOLTAGE
+// BATTERY / VCC VOLTAGE — internal 1.1V bandgap trick, no divider needed
+// Reports ~3.3V when healthy; drops below 3.3V when LDO can't regulate.
 // =========================================================================
 float readBattery() {
-    return (analogRead(BATT_PIN) / 1023.0f) * 3.3f * BATT_DIVIDER;
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);  // 1.1V ref vs VCC
+    delay(4);                                                    // bandgap settle
+    ADCSRA |= _BV(ADSC);
+    while (bit_is_set(ADCSRA, ADSC));
+    return BANDGAP_CAL / (float)ADC / 1000.0f;
 }
 
 // =========================================================================
@@ -171,9 +176,10 @@ void setup() {
     pinMode(SW_P4, INPUT_PULLUP);
     pinMode(SW_P5, INPUT_PULLUP);
 
-    // Unused pins — pulled up to prevent floating, which draws µA
+    // Unused pins pulled up to prevent floating
     pinMode(2,  INPUT_PULLUP);
     pinMode(3,  INPUT_PULLUP);
+    pinMode(A0, INPUT_PULLUP);
     pinMode(A1, INPUT_PULLUP);
     pinMode(A2, INPUT_PULLUP);
     pinMode(A3, INPUT_PULLUP);

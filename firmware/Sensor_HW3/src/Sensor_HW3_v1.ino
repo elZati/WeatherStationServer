@@ -197,9 +197,9 @@ void setup() {
         while (1) LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
     }
     bme.setSampling(Adafruit_BME280::MODE_FORCED,
-                    Adafruit_BME280::SAMPLING_X4,
-                    Adafruit_BME280::SAMPLING_X4,
-                    Adafruit_BME280::SAMPLING_X4,
+                    Adafruit_BME280::SAMPLING_X2,
+                    Adafruit_BME280::SAMPLING_X2,
+                    Adafruit_BME280::SAMPLING_X2,
                     Adafruit_BME280::FILTER_OFF,
                     Adafruit_BME280::STANDBY_MS_0_5);
     Serial.println(F("BME280: OK"));

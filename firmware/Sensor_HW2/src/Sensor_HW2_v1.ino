@@ -31,6 +31,8 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <esp_sleep.h>
+#include <esp_system.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 #include <ArduinoOTA.h>
 #include <Adafruit_Sensor.h>
@@ -86,7 +88,8 @@ const uint64_t BASE_ADDR = 0xABCDABCD00LL;
 // =========================================================================
 // GLOBALS
 // =========================================================================
-RTC_DATA_ATTR uint8_t sleep_multiplier = 5;   // 5 × 8 s = 40 s default
+RTC_DATA_ATTR uint8_t sleep_multiplier = 10;  // 10 × 12 s = 120 s default
+RTC_DATA_ATTR bool    wifiOff          = false; // set by OTA onEnd; cleared on cold power-on
 
 int32_t  NODE_ID = 0;
 uint64_t MY_ADDR = 0;
@@ -148,6 +151,9 @@ void setupWiFi() {
         Serial.print(".");
     }
     if (WiFi.status() == WL_CONNECTED) {
+        WiFi.setTxPower(WIFI_POWER_7dBm);  // 7dBm (5mW) — adequate for home WiFi; raise to 11dBm if dropouts
+        WiFi.setSleep(true);
+        esp_wifi_set_ps(WIFI_PS_MAX_MODEM); // more aggressive modem sleep — radio off more of the time
         Serial.printf("\nWiFi OK  IP: %s\n", WiFi.localIP().toString().c_str());
     } else {
         Serial.println("\nWiFi FAILED — continuing without network");
@@ -165,7 +171,8 @@ void setupOTA() {
         Serial.println("OTA: update starting");
     });
     ArduinoOTA.onEnd([]() {
-        Serial.println("\nOTA: done — rebooting");
+        wifiOff = true;  // next boot: no WiFi; power cycle to re-enable
+        Serial.println("\nOTA: done — WiFi will be off. Power cycle to re-enable.");
     });
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
         Serial.printf("OTA: %u%%\r", progress * 100 / total);
@@ -188,6 +195,7 @@ void runTransmitCycle() {
     pkt.sensor4 = 0.0f;
 
     if (hasBME) {
+        bme.takeForcedMeasurement();  // trigger one-shot reading; sensor sleeps after
         pkt.sensor1 = bme.readTemperature();
         pkt.sensor2 = bme.readHumidity();
         pkt.sensor3 = bme.readPressure() / 100.0f;
@@ -246,6 +254,11 @@ void setup() {
               ((!digitalRead(SW_P3)) << 0);
     MY_ADDR = BASE_ADDR + NODE_ID;
 
+    // Cold power-on clears RTC RAM — restore WiFi so OTA is reachable again
+    if (esp_reset_reason() == ESP_RST_POWERON) wifiOff = false;
+
+    setCpuFrequencyMhz(80);   // reduce heat: 160→80 MHz, no functional impact
+
     Serial.begin(115200);
     delay(100);
     Serial.printf("\n=== NODE %d HW2.0 START ===\n", NODE_ID);
@@ -260,7 +273,16 @@ void setup() {
     scanI2C();
 
     hasBME = bme.begin(0x76, &Wire);
-    Serial.println(hasBME ? "BME280: OK" : "WARN: BME280 not found");
+    if (hasBME) {
+        // Forced mode: sensor sleeps between cycles, wakes only when measurement triggered
+        bme.setSampling(Adafruit_BME280::MODE_FORCED,
+                        Adafruit_BME280::SAMPLING_X1,
+                        Adafruit_BME280::SAMPLING_X1,
+                        Adafruit_BME280::SAMPLING_X1,
+                        Adafruit_BME280::FILTER_OFF,
+                        Adafruit_BME280::STANDBY_MS_0_5);
+    }
+    Serial.println(hasBME ? "BME280: OK (forced mode)" : "WARN: BME280 not found");
 
     hasENS = ens160.begin();
     if (hasENS) {
@@ -276,9 +298,11 @@ void setup() {
 
     // ---- WiFi + OTA + Telnet (USB mode only) ----
     if (usbMode) {
-        setupWiFi();
-        if (WiFi.status() == WL_CONNECTED) {
-            setupOTA();
+        if (wifiOff) {
+            Serial.println("WiFi OFF (heat test) — power cycle to re-enable");
+        } else {
+            setupWiFi();
+            if (WiFi.status() == WL_CONNECTED) setupOTA();
         }
     }
 
@@ -304,7 +328,7 @@ void setup() {
     // ---- Battery mode: transmit once then deep sleep ----
     if (!usbMode) {
         runTransmitCycle();
-        uint32_t sleep_s = (uint32_t)sleep_multiplier * 8;
+        uint32_t sleep_s = (uint32_t)sleep_multiplier * 12;
         Serial.printf("Deep sleep %u s\n", sleep_s);
         Serial.flush();
         delay(20);
@@ -331,7 +355,7 @@ void loop() {
     // Transmit on schedule
     static bool    firstRun = true;
     static uint32_t lastTx  = 0;
-    uint32_t sleep_ms = (uint32_t)sleep_multiplier * 8000UL;
+    uint32_t sleep_ms = (uint32_t)sleep_multiplier * 12000UL;
 
     if (firstRun || millis() - lastTx >= sleep_ms) {
         firstRun = false;
@@ -340,5 +364,7 @@ void loop() {
         tprintf("Waiting %u s\n\n", sleep_ms / 1000);
     }
 
-    delay(10);
+    // Slow poll when idle (reduces CPU heat), fast poll near TX time
+    uint32_t elapsed = millis() - lastTx;
+    delay((elapsed < sleep_ms - 5000) ? 500 : 10);
 }

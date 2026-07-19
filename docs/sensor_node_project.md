@@ -215,9 +215,14 @@ lib_deps =
 #define I2C_SCL 5
 Wire.begin(I2C_SDA, I2C_SCL);
 
-// BME280
+// BME280 — forced mode (sensor sleeps between cycles, wakes on demand)
 Adafruit_BME280 bme;
 bme.begin(0x76);
+bme.setSampling(Adafruit_BME280::MODE_FORCED,
+                Adafruit_BME280::SAMPLING_X1, Adafruit_BME280::SAMPLING_X1,
+                Adafruit_BME280::SAMPLING_X1, Adafruit_BME280::FILTER_OFF,
+                Adafruit_BME280::STANDBY_MS_0_5);
+bme.takeForcedMeasurement();          // trigger before each read; sensor sleeps after
 float temp     = bme.readTemperature();        // °C
 float humidity = bme.readHumidity();           // %RH
 float pressure = bme.readPressure() / 100.0F;  // hPa

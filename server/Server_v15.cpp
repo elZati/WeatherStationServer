@@ -276,10 +276,10 @@ void uploadData() {
 
 // =========================================================================
 // writeAckGuaranteed(): Write ACK payload for a node, flushing the TX FIFO
-// first if the node is slow (gap > 20s since last TX). With 4+ active nodes
-// the 3-slot TX FIFO is always full; slow nodes' writeAckPayload calls are
-// silently dropped. Flushing guarantees the slot at the cost of fast nodes
-// missing one ACK cycle — acceptable since fast nodes re-TX within seconds.
+// first if the gap since last TX exceeds 14s. With 4+ active nodes the 3-slot
+// TX FIFO is always full; gaps > 14s mean the node is slow or just reset —
+// either way it needs a guaranteed slot. 14s is above normal fast-mode intervals
+// (8-12s) but catches post-reset first-TX gaps (~18s) and true slow nodes.
 // =========================================================================
 void writeAckGuaranteed(uint8_t pipeNum, int id) {
     time_t now = time(NULL);
@@ -288,13 +288,11 @@ void writeAckGuaranteed(uint8_t pipeNum, int id) {
 
     radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
 
-    if (gap > 20) {
-        // Slow node: TX FIFO was likely full. Flush, then reload this pipe so
-        // its next TX actually receives the sleep command.
-        radio.stopListening();
+    if (gap > 14) {
+        // flush_tx and writeAckPayload are valid SPI commands in any radio mode;
+        // no stopListening/startListening needed (and those may reset FEATURE).
         radio.flush_tx();
         radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
-        radio.startListening();
     }
 }
 

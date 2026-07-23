@@ -1,6 +1,6 @@
 /*
  * =========================================================================
- * SENSOR HW 3.0 FIRMWARE (v1.2)
+ * SENSOR HW 3.0 FIRMWARE (v1.5)
  * -------------------------------------------------------------------------
  * Target:   Arduino Pro Mini 3.3V / 8MHz (ATmega328P)
  * Radio:    NRF24L01+PA (E01-ML01DPA_TH) — CE=D9, CSN=D10
@@ -50,6 +50,10 @@
 // Adjust if VCC reads wrong vs multimeter: constant = measured_VCC_mV * ADC_result
 #define BANDGAP_CAL  1125300UL
 
+// Set 1 to print RF register state after powerUp each cycle (see if clone resets PA/DR)
+// Investigation result: E01-ML01DPA_TH preserves RF_SETUP, SETUP_RETR, FEATURE, and DYNPD.
+#define DEBUG_RF_REGS  0
+
 // =========================================================================
 // NODE CONFIG — hardcoded until SW1 is soldered
 // =========================================================================
@@ -79,7 +83,7 @@ const uint64_t BASE_ADDR = 0xABCDABCD00LL;
 // =========================================================================
 // GLOBALS
 // =========================================================================
-uint8_t  sleep_multiplier = 15;   // 15 × 8s = 120s
+uint8_t  sleep_multiplier = 1;    // server sends the configured value on first successful ACK
 int32_t  NODE_ID = 0;
 uint64_t MY_ADDR = 0;
 
@@ -100,6 +104,54 @@ int32_t readNodeId() {
     return 0;
 #endif
 }
+
+// =========================================================================
+// DEBUG: direct SPI register reads — bypasses RF24 private API
+// Called after powerUp() to show what the clone actually reset.
+// RF_SETUP (0x06): PA level (bits[2:1]: 0=MIN,1=LOW,2=HIGH,3=MAX) and
+//   data rate (bit5=DR_LOW → 250kbps, bit3=DR_HIGH → 2Mbps, both 0 → 1Mbps)
+// SETUP_RETR (0x04): ARD (bits[7:4] × 250µs) and ARC (bits[3:0] retry count)
+// FEATURE (0x1D): bit2=EN_DPL, bit1=EN_ACK_PAY (0 = reset by clone)
+// =========================================================================
+#if DEBUG_RF_REGS
+static uint8_t dbgReadReg(uint8_t reg) {
+    uint8_t val;
+    digitalWrite(NRF_CSN, LOW);
+    SPI.transfer(reg & 0x1F);   // read command = register address (no write bit)
+    val = SPI.transfer(0xFF);
+    digitalWrite(NRF_CSN, HIGH);
+    return val;
+}
+
+static void debugPrintRegs(const char* label) {
+    uint8_t rfSetup   = dbgReadReg(0x06);
+    uint8_t setupRetr = dbgReadReg(0x04);
+    uint8_t feature   = dbgReadReg(0x1D);
+    uint8_t dynpd     = dbgReadReg(0x1C);  // per-pipe dynamic payload enable
+
+    uint8_t pa    = (rfSetup >> 1) & 0x03;
+    uint8_t drLow = (rfSetup >> 5) & 0x01;
+    uint8_t drHi  = (rfSetup >> 3) & 0x01;
+
+    Serial.print(F("DBG[")); Serial.print(label); Serial.print(F("] "));
+    Serial.print(F("RF_SETUP=0x")); Serial.print(rfSetup, HEX);
+    Serial.print(F(" PA="));
+    if      (pa == 3) Serial.print(F("MAX(0dBm)"));
+    else if (pa == 2) Serial.print(F("HIGH(-6dBm)"));
+    else if (pa == 1) Serial.print(F("LOW(-12dBm)"));
+    else              Serial.print(F("MIN(-18dBm)"));
+    Serial.print(F(" DR="));
+    if      (drLow && !drHi) Serial.print(F("250K"));
+    else if (!drLow && drHi) Serial.print(F("2M"));
+    else                     Serial.print(F("1M"));
+    Serial.print(F(" RETR=ARC")); Serial.print(setupRetr & 0x0F);
+    Serial.print(F("/ARD")); Serial.print((setupRetr >> 4) & 0x0F);
+    Serial.print(F(" FEAT=0x")); Serial.print(feature, HEX);
+    Serial.print(F(" EN_DPL=")); Serial.print((feature >> 2) & 0x01);
+    Serial.print(F(" EN_ACKP=")); Serial.print((feature >> 1) & 0x01);
+    Serial.print(F(" DYNPD=0x")); Serial.println(dynpd, HEX);
+}
+#endif
 
 // =========================================================================
 // BATTERY / VCC VOLTAGE — internal 1.1V bandgap trick, no divider needed
@@ -142,13 +194,14 @@ void runTransmitCycle() {
 
     radio.powerUp();
     delay(100);
-    // Re-assert after powerUp: E01-ML01DPA_TH clone resets RF_SETUP (PA level,
-    // data rate), SETUP_RETR (retries), and FEATURE (EN_DPL, EN_ACK_PAY) on every
-    // powerDown — only a full VCC removal resets these per spec, but this clone
-    // does it on every power cycle.
-    radio.setPALevel(RF24_PA_HIGH);
-    radio.setDataRate(RF24_250KBPS);
-    radio.setRetries(15, 15);
+
+#if DEBUG_RF_REGS
+    debugPrintRegs("after-powerUp");
+#endif
+
+    // E01-ML01DPA_TH clone resets FEATURE (EN_DPL, EN_ACK_PAY) on every powerDown.
+    // Re-asserting only these two is sufficient — PA/data-rate/retries re-assertion
+    // caused ACK reception to fail (v1.2 regression), so they stay in setup() only.
     radio.enableDynamicPayloads();
     radio.enableAckPayload();
     radio.flush_tx();

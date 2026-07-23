@@ -141,6 +141,7 @@ class WeatherApp(ctk.CTk):
 
         self.setup_global_ui_controls()
         self.sleep_sliders = {}
+        self.node_cycle_s  = {}   # 8 for HW3 (WDT), 12 for HW2 (ESP deep-sleep)
 
     def setup_plotting_engine(self):
         plt.style.use('dark_background')
@@ -518,7 +519,8 @@ class WeatherApp(ctk.CTk):
             if i in self.sleep_sliders:
                 idx        = round(float(self.sleep_sliders[i].get()))
                 minutes    = SLEEP_STEPS_MIN[idx]
-                multiplier = max(1, round(minutes * 60 / 8))
+                cycle_s    = self.node_cycle_s.get(i, 8)
+                multiplier = max(1, round(minutes * 60 / cycle_s))
             else:
                 multiplier = 1
             settings.append(str(multiplier))
@@ -572,8 +574,9 @@ class WeatherApp(ctk.CTk):
     # DATA LAYER
     # --------------------------------------------------------------------------
 
-    def _init_node(self, nid, now_unix, initial_temp, initial_press, has_aq=False):
-        hw = "HW2.0" if has_aq else "HW1.x"
+    def _init_node(self, nid, now_unix, initial_temp, initial_press, has_aq=False, cycle_s=8):
+        self.node_cycle_s[nid] = cycle_s
+        hw = "HW2.0" if cycle_s == 12 else "HW3.0"
         logging.info("New node %d (%s) detected — %s", nid,
                      self.sensor_names.get(nid, f"Node {nid}"), hw)
         has_pressure = abs(initial_press - PRESSURE_SENTINEL) > 1.0
@@ -691,7 +694,8 @@ class WeatherApp(ctk.CTk):
 
                     if nid not in self.data_store:
                         self._init_node(nid, now_unix, current_temp, current_press,
-                                        has_aq=bool(entry.get('eco2', 0) or entry.get('aqi', 0)))
+                                        has_aq=bool(entry.get('eco2', 0) or entry.get('aqi', 0)),
+                                        cycle_s=12 if entry.get('batt', 1) == 0 else 8)
 
                     last_seen = entry.get("last_seen")
                     if last_seen:

@@ -69,7 +69,9 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 ### D. Sleep Control
 - Sleep steps (minutes): `[0, 1, 2, 3, 4, 5, 10, 15, 20, 30, 60]`. Step 0 = "Fastest".
 - Per-node sliders in sidebar; "Update Arduino Timing" writes multipliers to `config.txt`.
-- Multiplier = `max(1, round(minutes × 60 / 8))` (8-second WDT cycles).
+- Multiplier calculated per node using the correct WDT cycle:
+  - HW3 (Arduino, `batt > 0`): `max(1, round(minutes × 60 / 8))` — 8-second WDT cycles
+  - HW2 (ESP32, `batt == 0`): `max(1, round(minutes × 60 / 12))` — 12-second deep-sleep cycles
 - C++ server picks up `config.txt` every 2s and flushes/reloads ACK payloads.
 - Node timeout auto-calculated: `max(60, max_sleep_min × 3 × 60)` seconds.
 

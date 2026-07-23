@@ -72,7 +72,7 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 - Multiplier calculated per node using the correct WDT cycle:
   - HW3 (Arduino, `batt > 0`): `max(1, round(minutes × 60 / 8))` — 8-second WDT cycles
   - HW2 (ESP32, `batt == 0`): `max(1, round(minutes × 60 / 12))` — 12-second deep-sleep cycles
-- C++ server picks up `config.txt` every 2s and flushes/reloads ACK payloads.
+- C++ server picks up `config.txt` every 2s; the updated multiplier is sent via ACK payload on the node's next TX.
 - Node timeout auto-calculated: `max(60, max_sleep_min × 3 × 60)` seconds.
 
 ### E. Graph Windows
@@ -108,4 +108,5 @@ If `live_data.json` is empty or malformed (race with server write), the GUI skip
 | AQI shows "—" (warming up) | ENS160 normal for first ~1h after power-on; values stabilise over time |
 | Forecast not updating | Check internet on Pi; location name valid for Open-Meteo geocoding API |
 | Sleep command not reaching node | Check `config.txt` exists; verify ACK payload in serial monitor. Note: NRF24 TX FIFO has only 3 slots — with 5 nodes, pre-loading ACK payloads for all pipes at startup would overflow the FIFO and silently drop pipes 4 and 5. The server intentionally starts with an empty FIFO and relies on the per-RX `writeAckPayload` call instead. After a server restart, each node misses its first ACK; the correct multiplier is applied from the second transmission onward. |
+| Slow node (HW3) ignores sleep config — stays at 120–145s despite config set to fastest | Two causes. (1) **Node-side**: E01-ML01DPA_TH clone resets the FEATURE register (`EN_ACK_PAY`, `EN_DPL`) on every `powerDown()`, even though the spec says registers survive power-down. After `powerUp()` the node sends the packet and receives the ACK, but `isAckPayloadAvailable()` always returns false (payload feature disabled) so `sleep_multiplier` never updates. Fix: re-call `enableDynamicPayloads()` + `enableAckPayload()` after every `powerUp()` in firmware (HW3 v1.1+, HW2 v1.2+). (2) **Server-side**: with 4+ active nodes the 3-slot NRF24 TX FIFO is always full, so slow nodes' `writeAckPayload` calls are silently dropped. Fix (server v15.1+): `writeAckGuaranteed()` flushes FIFO and reloads the slow pipe when its TX gap exceeds 20s. |
 | ESP node stuck at default 120s interval despite server running | NRF24 clone register state can drift after weeks of uptime. `powerDown()`/`powerUp()` preserves registers per spec, but some clones accumulate bad state that only a full power removal (VCC=0) resets. Fix: power-cycle the ESP. The HW2 firmware (v1.2+) re-asserts `enableDynamicPayloads()` + `enableAckPayload()` before every TX and leaves the radio powered in USB mode to prevent recurrence. |

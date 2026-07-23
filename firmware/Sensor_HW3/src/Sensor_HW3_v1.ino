@@ -1,6 +1,6 @@
 /*
  * =========================================================================
- * SENSOR HW 3.0 FIRMWARE (v1.0)
+ * SENSOR HW 3.0 FIRMWARE (v1.1)
  * -------------------------------------------------------------------------
  * Target:   Arduino Pro Mini 3.3V / 8MHz (ATmega328P)
  * Radio:    NRF24L01+PA (E01-ML01DPA_TH) — CE=D9, CSN=D10
@@ -142,6 +142,11 @@ void runTransmitCycle() {
 
     radio.powerUp();
     delay(100);
+    // Re-assert after powerUp: E01-ML01DPA_TH clone resets the FEATURE register
+    // on every powerDown, clearing EN_ACK_PAY and EN_DPL. Without this, TX: OK
+    // but isAckPayloadAvailable() always returns false → sleep_mult never updates.
+    radio.enableDynamicPayloads();
+    radio.enableAckPayload();
     radio.flush_tx();
     bool ok = radio.write(&pkt, sizeof(pkt));
     uint8_t arc = radio.getARC();

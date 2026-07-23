@@ -98,6 +98,7 @@ RF24        radio(22, 0);
 SensorPayload nodes[6];
 NodeExtras    extras[6];
 time_t        last_seen[6]  = {0};
+time_t        prev_seen[6]  = {0};  // TX timestamp before the current one
 float         sleep_cmds[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 
 unsigned long last_upload   = 0;
@@ -274,6 +275,30 @@ void uploadData() {
 }
 
 // =========================================================================
+// writeAckGuaranteed(): Write ACK payload for a node, flushing the TX FIFO
+// first if the node is slow (gap > 20s since last TX). With 4+ active nodes
+// the 3-slot TX FIFO is always full; slow nodes' writeAckPayload calls are
+// silently dropped. Flushing guarantees the slot at the cost of fast nodes
+// missing one ACK cycle — acceptable since fast nodes re-TX within seconds.
+// =========================================================================
+void writeAckGuaranteed(uint8_t pipeNum, int id) {
+    time_t now = time(NULL);
+    time_t gap = (prev_seen[id] > 0) ? (now - prev_seen[id]) : 999;
+    prev_seen[id] = now;
+
+    radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+
+    if (gap > 20) {
+        // Slow node: TX FIFO was likely full. Flush, then reload this pipe so
+        // its next TX actually receives the sleep command.
+        radio.stopListening();
+        radio.flush_tx();
+        radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+        radio.startListening();
+    }
+}
+
+// =========================================================================
 // main()
 // =========================================================================
 int main(int argc, char** argv) {
@@ -322,7 +347,7 @@ int main(int argc, char** argv) {
                     nodes[id]        = incoming;
                     extras[id].is_v2 = false;
                     last_seen[id]    = time(NULL);
-                    radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+                    writeAckGuaranteed(pipeNum, id);
                     saveForUI();
                     log_msg("INFO", "RX NODE %d V1 | T:%.1f H:%.1f P:%.1f B:%.2f",
                             id, incoming.sensor1, incoming.sensor2,
@@ -347,7 +372,7 @@ int main(int argc, char** argv) {
                     extras[id].aqi    = incoming.aqi;
                     extras[id].is_v2  = true;
                     last_seen[id]     = time(NULL);
-                    radio.writeAckPayload(pipeNum, &sleep_cmds[id], sizeof(float));
+                    writeAckGuaranteed(pipeNum, id);
                     saveForUI();
                     log_msg("INFO", "RX NODE %d V2 | T:%.1f H:%.1f P:%.1f eCO2:%u TVOC:%u AQI:%u",
                             id, incoming.sensor1, incoming.sensor2, incoming.sensor3,

@@ -107,4 +107,4 @@ If `live_data.json` is empty or malformed (race with server write), the GUI skip
 | Pressure shows `----` | Node doesn't have BMP180, or is sending sentinel `33.33` |
 | AQI shows "—" (warming up) | ENS160 normal for first ~1h after power-on; values stabilise over time |
 | Forecast not updating | Check internet on Pi; location name valid for Open-Meteo geocoding API |
-| Sleep command not reaching node | Check `config.txt` exists; verify ACK payload in serial monitor |
+| Sleep command not reaching node | Check `config.txt` exists; verify ACK payload in serial monitor. Note: NRF24 TX FIFO has only 3 slots — with 5 nodes, pre-loading ACK payloads for all pipes at startup would overflow the FIFO and silently drop pipes 4 and 5. The server intentionally starts with an empty FIFO and relies on the per-RX `writeAckPayload` call instead. After a server restart, each node misses its first ACK; the correct multiplier is applied from the second transmission onward. |

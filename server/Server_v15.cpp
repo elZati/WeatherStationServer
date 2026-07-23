@@ -134,12 +134,11 @@ void updateConfigs() {
                 }
             }
             if (changed) {
-                radio.stopListening();
-                radio.flush_tx();
-                for (int i = 1; i <= 5; i++)
-                    radio.writeAckPayload(i, &sleep_cmds[i], sizeof(float));
-                radio.startListening();
-                printf(">>> CONFIG UPDATE: Radio buffers flushed and re-synced.\n");
+                // sleep_cmds updated in memory; per-RX writeAckPayload picks up
+                // new values automatically on the next TX from each node.
+                printf(">>> CONFIG UPDATE: sleep=[%.0f %.0f %.0f %.0f %.0f]\n",
+                       sleep_cmds[1], sleep_cmds[2], sleep_cmds[3],
+                       sleep_cmds[4], sleep_cmds[5]);
                 log_msg("INFO", "Config update: sleep=[%.0f %.0f %.0f %.0f %.0f]",
                         sleep_cmds[1], sleep_cmds[2], sleep_cmds[3],
                         sleep_cmds[4], sleep_cmds[5]);
@@ -290,8 +289,8 @@ int main(int argc, char** argv) {
     radio.setPALevel(RF24_PA_HIGH);
     radio.setDataRate(RF24_250KBPS);
     radio.setCRCLength(RF24_CRC_16);
-    radio.enableAckPayload();
     radio.enableDynamicPayloads();
+    radio.enableAckPayload();
 
     radio.stopListening();
     radio.closeReadingPipe(0);
@@ -300,9 +299,9 @@ int main(int argc, char** argv) {
         radio.openReadingPipe(i, pipes[i]);
 
     updateConfigs();
-    for (int i = 1; i <= 5; i++)
-        radio.writeAckPayload(i, &sleep_cmds[i], sizeof(float));
-
+    // NRF24 TX FIFO has only 3 slots — pre-loading all 5 pipes overflows it and
+    // silently drops pipes 4+5. Start with an empty FIFO; the per-RX handler
+    // loads each pipe's ACK payload immediately after every received packet.
     radio.startListening();
     last_upload = __millis();
     log_msg("INFO", "Radio OK — listening on pipes 1-5 (V1=20B V2=25B)");

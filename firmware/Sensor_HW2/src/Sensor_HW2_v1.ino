@@ -1,6 +1,6 @@
 /*
  * =========================================================================
- * SENSOR HW 2.0 FIRMWARE (v1.2)
+ * SENSOR HW 2.0 FIRMWARE (v1.3)
  * -------------------------------------------------------------------------
  * Target:   ESP32-C3 SuperMini (HW-466AB)
  * Radio:    NRF24L01 — CE=GPIO0, CSN=GPIO1
@@ -221,9 +221,13 @@ void runTransmitCycle() {
 
     radio.powerUp();
     delay(10);
-    // Re-assert after powerUp: long uptime can leave NRF24 clone registers in a
-    // stale state that powerDown/powerUp does not reset (only full VCC removal
-    // resets the chip). This keeps ACK payload reception reliable.
+    // Re-assert after powerUp: NRF24 clone chips can reset RF_SETUP (PA level,
+    // data rate), SETUP_RETR (retries), and FEATURE (EN_DPL, EN_ACK_PAY) on
+    // powerDown — only a full VCC removal resets these per spec, but clones
+    // do it every cycle. Re-asserting here keeps the radio correctly configured.
+    radio.setPALevel(RF24_PA_HIGH);
+    radio.setDataRate(RF24_250KBPS);
+    radio.setRetries(5, 15);
     radio.enableDynamicPayloads();
     radio.enableAckPayload();
     bool ok = radio.write(&pkt, sizeof(pkt));

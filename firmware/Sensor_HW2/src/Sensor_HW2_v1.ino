@@ -221,6 +221,11 @@ void runTransmitCycle() {
 
     radio.powerUp();
     delay(10);
+    // Re-assert after powerUp: long uptime can leave NRF24 clone registers in a
+    // stale state that powerDown/powerUp does not reset (only full VCC removal
+    // resets the chip). This keeps ACK payload reception reliable.
+    radio.enableDynamicPayloads();
+    radio.enableAckPayload();
     bool ok = radio.write(&pkt, sizeof(pkt));
 
     if (ok) {
@@ -237,7 +242,9 @@ void runTransmitCycle() {
         tprintf("TX: FAILED\n");
     }
 
-    radio.powerDown();
+    // Battery mode: power down between deep-sleep cycles.
+    // USB mode: radio stays powered — avoids register state drift over time.
+    if (!usbMode) radio.powerDown();
 }
 
 // =========================================================================

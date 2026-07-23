@@ -672,7 +672,11 @@ class WeatherApp(ctk.CTk):
         try:
             if os.path.exists(JSON_FILE):
                 with open(JSON_FILE, 'r') as f:
-                    data = json.load(f)
+                    try:
+                        data = json.load(f)
+                    except (json.JSONDecodeError, ValueError):
+                        self.after(UPDATE_RATE_MS, self.update_loop)
+                        return  # file mid-write, skip cycle
 
                 now_dt, now_unix = datetime.now(), time.time()
                 timeout_sec = self._get_timeout_sec()
@@ -687,11 +691,13 @@ class WeatherApp(ctk.CTk):
 
                     if nid not in self.data_store:
                         self._init_node(nid, now_unix, current_temp, current_press,
-                                        has_aq='eco2' in entry)
+                                        has_aq=bool(entry.get('eco2', 0) or entry.get('aqi', 0)))
 
+                    last_seen = entry.get("last_seen")
+                    if last_seen:
+                        self.last_packet_time[nid] = last_seen
                     if current_temp != self.previous_values.get(nid):
-                        self.last_packet_time[nid] = now_unix
-                        self.previous_values[nid]  = current_temp
+                        self.previous_values[nid] = current_temp
 
                     self.data_store[nid]['raw']['temp'].append(current_temp)
                     self.data_store[nid]['raw']['hum'].append(current_hum)

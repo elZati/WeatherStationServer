@@ -5,8 +5,7 @@
 
 ## Goal
 Battery-powered, wireless environmental sensor node on a custom PCB.
-Reads temperature, humidity, pressure, eCO2, TVOC and air quality index,
-then transmits data wirelessly via the NRF24L01+PA radio module.
+Reads temperature, humidity, and pressure, then transmits data wirelessly via the NRF24L01+PA radio module. ENS160 footprint present on PCB but not populated in current production builds.
 
 ---
 
@@ -16,12 +15,13 @@ then transmits data wirelessly via the NRF24L01+PA radio module.
 |---|---|---|---|
 | Arduino Pro Mini (ATmega328P, 3.3 V / 8 MHz) | Main MCU | — | — |
 | GY-BME280 | Temp / Humidity / Pressure | I2C | 0x76 |
-| ENS160 breakout | eCO2 / TVOC / AQI | I2C | 0x52 |
 | NRF24L01+PA (E01-ML01DPA_TH) | 2.4 GHz wireless TX | SPI | — |
-| SW1 WS-DITV_A18117270905 | 5-position DIP — node ID + PA level | GPIO | — |
+| SW1 WS-DITV_A18117270905 | 5-position DIP — node ID | GPIO | — |
 | MCP1700T-3302E_TT | 3.3 V LDO regulator | — | — |
 
 Power supply: single-cell battery via J1 connector → MCP1700T → 3.3 V rail.
+
+**Note:** Flash firmware before soldering SW1. SW1 blocks the USB-C port; USB programming is not possible once SW1 is installed.
 
 ---
 
@@ -36,7 +36,7 @@ Power supply: single-cell battery via J1 connector → MCP1700T → 3.3 V rail.
 | D12 | MISO | MISO |
 | D13 | SCK  | SCK  |
 
-### I2C — BME280 and ENS160 (shared bus)
+### I2C — BME280 (shared bus, ENS160 footprint reserved)
 | Arduino pin | Signal |
 |---|---|
 | A4 | SDA |
@@ -44,80 +44,74 @@ Power supply: single-cell battery via J1 connector → MCP1700T → 3.3 V rail.
 
 Pull-ups: 4.7 kΩ from SDA and SCL to 3.3 V (check breakout boards for onboard pull-ups).
 
-### SW1 DIP switch (active-low, pull-up enabled in firmware; other side of all → GND)
+### SW1 DIP switch — one-hot, active-low (all switches → GND on common side)
 
-| Switch | Arduino pin | Role | Bit weight |
-|---|---|---|---|
-| P1 | D8 | NODE_ID bit 2 | 4 |
-| P2 | D7 | NODE_ID bit 1 | 2 |
-| P3 | D6 | NODE_ID bit 0 | 1 |
-| P4 | D5 | PA level bit 1 | 2 |
-| P5 | D4 | PA level bit 0 | 1 |
+Exactly one switch ON at a time. The firmware reads the first LOW pin and assigns that NODE_ID.
 
-#### NODE_ID table (P1–P3)
-| NODE_ID | P1 | P2 | P3 |
-|---|---|---|---|
-| 1 | OFF | OFF | ON  |
-| 2 | OFF | ON  | OFF |
-| 3 | OFF | ON  | ON  |
-| 4 | ON  | OFF | OFF |
-| 5 | ON  | OFF | ON  |
-| 6 | ON  | ON  | OFF |
-
-#### PA level table (P4–P5)
-| PA level | P4 | P5 |
+| Switch | Arduino pin | NODE_ID assigned |
 |---|---|---|
-| RF24_PA_MIN  | OFF | OFF |
-| RF24_PA_LOW  | OFF | ON  |
-| RF24_PA_HIGH | ON  | OFF |
-| RF24_PA_MAX  | ON  | ON  |
+| P1 | D8 | 1 |
+| P2 | D7 | 2 |
+| P3 | D6 | 3 |
+| P4 | D5 | 4 |
+| P5 | D4 | 5 |
 
-### Mode / address straps (one-time jumpers)
-| Pin | Connect to | Effect |
-|---|---|---|
-| BME280 CSB | 3.3 V | Force I2C mode |
-| BME280 SDO | GND   | Set I2C addr → 0x76 |
-| ENS160 CS  | 3.3 V | Force I2C mode |
-| ENS160 ADD | GND   | Set I2C addr → 0x52 |
+`HARDCODED_NODE_ID` in firmware overrides the DIP switch when set to 1–5. Set to 0 to use the switch.
 
 ---
 
-## Operating modes — auto-detected at boot by I2C scan
+## Operating Mode
 
-| Sensors detected | Mode | Sleep strategy | sensor4 |
-|---|---|---|---|
-| BME280 only | **BATTERY** | WDT `SLEEP_MODE_PWR_DOWN` | battery voltage (V) |
-| BME280 + ENS160 | **USB** | `delay()` — MCU stays awake | 0.0 (USB powered) |
+HW 3.0 always runs in **BATTERY mode** (BME280 only):
 
-### BATTERY mode optimisations
-- WDT 8-second ticks; transmit every `sleep_multiplier × 8 s`
-- BOD (Brown-Out Detection) disabled before each sleep (~20 µA saving)
+- WDT 8-second ticks; transmit every `sleep_multiplier × 8 s` (default 15 = 120 s)
+- BOD disabled before each sleep
 - ADC disabled during sleep
-- BME280 configured in **forced mode** — single-shot measurement then back to ~0.1 µA sleep
+- BME280 in **forced mode** — single-shot measurement then back to sleep
 - Radio `powerDown()` between transmissions
+- Battery voltage measured via ATmega internal 1.1 V bandgap — no resistor divider needed
 
-### USB mode
-- `delay()` between transmissions keeps the MCU and I2C bus alive
-- ENS160 maintains its internal gas-sensor baseline continuously
-- BME280 in normal mode; temp/humidity fed to ENS160 each cycle for compensation
-- `sensor4 = 0.0` (no battery circuit on USB nodes)
-- ENS160 requires ~1 h warm-up — `aqi = 0` until baseline is stable
+Sleep multiplier updated by server ACK payload (float cast to uint8_t, range 1–200).
 
 ---
 
 ## Protocol
 
-- **Payload**: 25-byte `SensorPayloadV2` (same as HW 2.0 — server identifies by dynamic payload size)
-- **Radio**: 250 KBPS, CRC-16, auto-ACK, dynamic payloads
+- **Payload**: 25-byte `SensorPayloadV2` — server identifies by dynamic payload size (20 B = HW1.x, 25 B = HW2/HW3)
+- **Radio**: 250 KBPS, CRC-16, auto-ACK, dynamic payloads, `setRetries(15, 15)`
+- **Channel**: 76
+- **PA level**: `RF24_PA_HIGH`
 - **Address**: `0xABCDABCD00 + NODE_ID`
 - **ACK payload**: server sends back `float` sleep multiplier
 
+### SensorPayloadV2 (25 bytes)
+| Field | Type | Content |
+|---|---|---|
+| nodeID | int32_t | NODE_ID (1–5) |
+| sensor1 | float | Temperature °C |
+| sensor2 | float | Humidity %RH |
+| sensor3 | float | Pressure hPa |
+| sensor4 | float | Battery voltage V (LDO output) |
+| eco2 | uint16_t | 0 (no ENS160) |
+| tvoc | uint16_t | 0 (no ENS160) |
+| aqi | uint8_t | 0 (no ENS160) |
+
 ---
 
-## Battery voltage
+## Battery Voltage
 
-ATmega328P VCC measured against the internal 1.1 V bandgap reference.
-Result in `sensor4` (battery mode only; 0.0 in USB mode).
+ATmega328P VCC measured against the internal 1.1 V bandgap reference — no external resistor divider required. Reports ~3.3 V when healthy (LDO in regulation); sags when battery depletes past LDO dropout (~2.0 V).
+
+Calibration constant `BANDGAP_CAL = 1125300UL`. Adjust if reading differs from multimeter: `constant = measured_mV × ADC_result`.
+
+---
+
+## NRF24 Notes
+
+- Module: E01-ML01DPA_TH (PA+LNA). Draws ~130 mA at PA_MAX.
+- Power the RF module from battery, not FTDI 3.3 V — the FTDI supply (~50 mA) cannot sustain TX bursts and causes BOD brownout resets.
+- A damaged PA chip shows ARC=15 (15 retransmits, no ACK). LNA (receive path) typically survives 5 V exposure; PA (transmit path) does not.
+- Add a 100 µF decoupling cap across VCC/GND if using a breadboard test setup.
 
 ---
 
@@ -126,12 +120,32 @@ Result in `sensor4` (battery mode only; 0.0 in USB mode).
 ```
 adafruit/Adafruit BME280 Library
 adafruit/Adafruit Unified Sensor
-sciosense/ScioSense_ENS160
 tmrh20/RF24
+rocketscream/Low-Power
 ```
 
 ---
 
 ## Firmware
 
-`firmware/Sensor_HW3_v1.ino`
+Production: `firmware/Sensor_HW3/src/Sensor_HW3_v1.ino`
+Debug/bring-up: `firmware/Sensor_HW3_debug/src/Sensor_HW3_debug.ino`
+
+---
+
+## NRF24 UNO Test Board
+
+`firmware/NRF24_UNO_test/` — Arduino Uno (5 V / 16 MHz) test node for RF link diagnostics.
+
+Hardcoded NODE_ID (set in firmware). Sends fixed test values (T=25, H=50, P=1013, V=5) every 10 s. No sleep — USB powered. Useful for verifying the server receive path and RF link without a production Pro Mini node.
+
+Wiring (standard SPI):
+| NRF24 pin | Uno pin |
+|---|---|
+| VCC | 3.3V |
+| GND | GND |
+| CE | D9 |
+| CSN | D10 |
+| SCK | D13 |
+| MOSI | D11 |
+| MISO | D12 |

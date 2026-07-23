@@ -12,6 +12,7 @@ The GEMINI Weather Station is a multi-tier IoT architecture. It collects environ
 |-------|-----------|--------|
 | Source (HW 1.x) | ATmega Pro Mini nodes | Sleep via WDT (8s × multiplier). Wake, read HTU21D + optional BMP180, transmit **20-byte** struct via nRF24L01. |
 | Source (HW 2.0) | ESP32-C3 SuperMini nodes | Deep-sleep (timer-wakeup). Wake, read BME280 + ENS160, transmit **25-byte** struct via nRF24L01. |
+| Source (HW 3.0) | ATmega Pro Mini nodes | Sleep via WDT (8s × multiplier). Wake, read BME280, transmit **25-byte** struct via nRF24L01+PA. Battery voltage via bandgap. ENS160 not populated. |
 | Bridge | C++ server (`Server_v15.cpp`) | Detects payload size (20 vs 25 bytes). Updates `live_data.json`, sends ACK sleep command, uploads to remote DB every 15 min. |
 | Interface | Python GUI (`gui/gui_v19.py`) | Reads `live_data.json` every 2s, renders sensor cards and live graphs. |
 | Web | PHP + Chart.js (`saa/`) | Reads remote MySQL DB (`node_readings` table), shows historical charts and per-node cards. |
@@ -45,8 +46,9 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 
 ### A. Sensor Cards
 - Dynamically created when a node first checks in.
-- HW 1.x show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend (nodes with BMP180), TX age.
-- HW 2.0 additionally show: AQI level (colour-coded 1–5 from Excellent to Unhealthy), eCO2 (ppm), TVOC (ppb). Battery shows "USB Pwr" when `batt=0`.
+- All nodes show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend, TX age.
+- ENS160 fields (AQI, eCO2, TVOC) only appear if the node sends non-zero `eco2` or `aqi` values — nodes without ENS160 (HW 3.0, test boards) get a clean card without those rows.
+- Battery shows "USB Pwr" when `batt=0`.
 - Click a card to toggle that node's line on/off in the graph.
 - Cards auto-hide after timeout (longest sleep setting × 3, minimum 60s) and reappear when data resumes.
 - Font sizes switch between `CARD_FONTS_NORMAL` and `CARD_FONTS_FULL` on fullscreen toggle.
@@ -86,7 +88,11 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 
 ## 5. Change Detection (TX Timer)
 
-The GUI keeps `previous_values[nid]` (last seen temperature). The `last_packet_time` only resets when the temperature value actually changes. This prevents the "TX: 0s ago" timer from resetting every 2-second poll cycle when the node is sleeping and the JSON hasn't changed.
+`last_packet_time[nid]` is set directly from the `last_seen` Unix timestamp written by the C++ server into `live_data.json`. This correctly tracks the server-side receive time regardless of whether sensor values changed between packets — important for nodes sending fixed or slowly-changing values.
+
+`previous_values[nid]` (last seen temperature) is retained for other purposes but no longer gates the TX timer update.
+
+If `live_data.json` is empty or malformed (race with server write), the GUI skips that poll cycle and reschedules normally — previous node state is preserved.
 
 ---
 

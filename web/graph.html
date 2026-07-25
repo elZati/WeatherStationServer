@@ -269,10 +269,10 @@ function renderNodeCards() {
         const hasPress = Math.abs(parseFloat(d.press) - PRESSURE_SENTINEL) > 1.0;
         const ago    = timeSince(d.timestamp);
 
-        const hasAQ = d.eco2 != null;
-        const aqi   = hasAQ ? parseInt(d.aqi)  : 0;
-        const eco2  = hasAQ ? parseInt(d.eco2) : 0;
-        const tvoc  = hasAQ ? parseInt(d.tvoc) : 0;
+        const eco2  = d.eco2 != null ? parseInt(d.eco2) : 0;
+        const tvoc  = d.tvoc != null ? parseInt(d.tvoc) : 0;
+        const aqi   = d.aqi  != null ? parseInt(d.aqi)  : 0;
+        const hasAQ = eco2 > 0 || aqi > 0;  // hide when no ENS160 (all zeros)
         const aqiLabel = AQI_LABELS[aqi] || (aqi === 0 ? 'Warming up' : '?');
         const aqiColor = AQI_COLORS[aqi] || '#555555';
 

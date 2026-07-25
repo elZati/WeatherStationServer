@@ -47,7 +47,7 @@ The layout switches by moving `self.header` between grid positions and reconfigu
 ### A. Sensor Cards
 - Dynamically created when a node first checks in.
 - All nodes show: temperature (large), humidity, battery voltage (red if < 2.6V), pressure + trend, TX age.
-- ENS160 fields (AQI, eCO2, TVOC) only appear if the node sends non-zero `eco2` or `aqi` values — nodes without ENS160 (HW 3.0, test boards) get a clean card without those rows.
+- ENS160 fields (AQI, eCO2, TVOC) only appear if the node sends non-zero `eco2` or `aqi` values — nodes without ENS160 (HW 3.0, test boards) get a clean card without those rows. Same rule applies to the web page (`graph.html`).
 - Battery shows "USB Pwr" when `batt=0`.
 - Click a card to toggle that node's line on/off in the graph.
 - Cards auto-hide after timeout (longest sleep setting × 3, minimum 60s) and reappear when data resumes.

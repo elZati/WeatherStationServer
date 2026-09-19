@@ -316,3 +316,7 @@ body {
 }
 #blitz-status { font-size: 11px; color: #555555; white-space: nowrap; flex-shrink: 0; }
 .wx-lightning  { font-size: 11px; margin-top: 1px; }
+
+@media (max-width: 600px) {
+    .chart-wrap { height: 180px; }
+}

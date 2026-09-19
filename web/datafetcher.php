@@ -45,16 +45,14 @@ if ($action === "latest") {
 } elseif ($action === "series") {
     $from = validDate($_GET["from"] ?? date("Y-m-d"));
     $to   = validDate($_GET["to"]   ?? date("Y-m-d"));
-    $stmt = $conn->prepare(
+    // validDate() enforces YYYY-MM-DD format so direct interpolation is safe
+    $result = $conn->query(
         "SELECT node_id, temp, hum, press, batt, eco2, tvoc, aqi, timestamp AS ts
          FROM node_readings
-         WHERE DATE(timestamp) BETWEEN ? AND ?
+         WHERE DATE(timestamp) BETWEEN '$from' AND '$to'
            AND temp IS NOT NULL AND temp != -99.9
          ORDER BY node_id, timestamp"
     );
-    $stmt->bind_param("ss", $from, $to);
-    $stmt->execute();
-    $result = $stmt->get_result();
     $data = [];
     $count = 0;
     while ($row = $result->fetch_assoc()) {
@@ -74,27 +72,24 @@ if ($action === "latest") {
         $data[$nid][] = $entry;
         $count++;
     }
-    $stmt->close();
     saa_log("series from=$from to=$to => $count rows");
     echo json_encode((object)$data);
 
 } elseif ($action === "stats") {
     $from = validDate($_GET["from"] ?? date("Y-m-d"));
     $to   = validDate($_GET["to"]   ?? date("Y-m-d"));
-    $stmt = $conn->prepare(
+    // validDate() enforces YYYY-MM-DD format so direct interpolation is safe
+    $result = $conn->query(
         "SELECT node_id,
                 MIN(temp)  AS min_temp,  MAX(temp)  AS max_temp,
                 MIN(hum)   AS min_hum,   MAX(hum)   AS max_hum,
                 MIN(press) AS min_press, MAX(press) AS max_press,
                 MIN(eco2)  AS min_eco2,  MAX(eco2)  AS max_eco2
          FROM node_readings
-         WHERE DATE(timestamp) BETWEEN ? AND ?
+         WHERE DATE(timestamp) BETWEEN '$from' AND '$to'
            AND temp IS NOT NULL AND temp != -99.9
          GROUP BY node_id"
     );
-    $stmt->bind_param("ss", $from, $to);
-    $stmt->execute();
-    $result = $stmt->get_result();
     $data = [];
     while ($row = $result->fetch_assoc()) {
         $nid = (int)$row["node_id"];
@@ -112,7 +107,6 @@ if ($action === "latest") {
         }
         $data[$nid] = $entry;
     }
-    $stmt->close();
     saa_log("stats from=$from to=$to => " . count($data) . " node(s)");
     echo json_encode((object)$data);
 
